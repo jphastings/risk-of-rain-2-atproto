@@ -1,0 +1,14 @@
+# .NET build output
+bin/
+obj/
+
+# Local-only build config + restored packages
+mod/local.props
+packages/
+
+# Runtime artefacts written next to the plugin
+config.json
+outbox/
+
+# OS
+.DS_Store
