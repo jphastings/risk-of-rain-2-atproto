@@ -12,9 +12,10 @@ namespace ByJP.Ror2.Play.Mapping
     /// <see cref="PlaySession"/>. One mapper per run.
     /// </summary>
     /// <remarks>
-    /// This is the layer that exercises the package API. Notable frictions found
-    /// while writing it are flagged with <c>GAP:</c> comments and collected in
-    /// <c>docs/api-gaps.md</c>.
+    /// With instance-keyed, replace-style ops the mapper holds no per-emit
+    /// bookkeeping: it re-states the full acquisitions list and re-arrives/leaves
+    /// every route stop each snapshot, and the package dedupes — so a mid-run crash
+    /// can't duplicate entries.
     /// </remarks>
     public sealed class PlayRecordMapper
     {
@@ -22,12 +23,6 @@ namespace ByJP.Ror2.Play.Mapping
         private readonly PlaySession _play;
         private readonly string _game;
         private readonly string _source;
-
-        // GAP: AddAcquisition / AddRouteStop are append-only and the mapper has no
-        // way to read what's already on the record, so it must remember how much it
-        // has emitted to avoid re-appending. (See docs/api-gaps.md #1, #3.)
-        private int _emittedItems;
-        private readonly HashSet<string> _emittedStops = new HashSet<string>();
         private bool _settingsEmitted;
 
         public PlayRecordMapper(AtprotoGamingClient client, PlaySession play, string game, string source)
@@ -52,9 +47,7 @@ namespace ByJP.Ror2.Play.Mapping
                 _settingsEmitted = true;
             }
 
-            // Progress: RoR2's StatSheet is authoritative and absolute, so we set
-            // values rather than increment. (IncrementProgress is unused here — see
-            // docs/api-gaps.md #5.)
+            // RoR2's StatSheet is authoritative and absolute, so set values directly.
             tx.SetProgress("stopwatch", snap.StopwatchSeconds);
             tx.SetProgress("stageClearCount", snap.StageClearCount);
             if (snap.CurrentHp is int hp) tx.SetProgress("hp", hp);
@@ -64,8 +57,8 @@ namespace ByJP.Ror2.Play.Mapping
             foreach (var map in snap.StatMaps)
                 tx.SetProgress(map.Key, ToObject(map.Value)); // nested object via AtValue(JsonNode)
 
-            EmitNewAcquisitions(tx, snap);
-            EmitCompletedRouteStops(tx, snap);
+            EmitAcquisitions(tx, snap);
+            EmitRoute(tx, snap);
             await EmitParticipantsAsync(tx, snap).ConfigureAwait(false);
 
             if (snap.Outcome is RunOutcome outcome)
@@ -83,39 +76,35 @@ namespace ByJP.Ror2.Play.Mapping
             return result;
         }
 
-        private void EmitNewAcquisitions(PlayUpdate tx, RunSnapshot snap)
+        private static void EmitAcquisitions(PlayUpdate tx, RunSnapshot snap)
         {
-            for (var i = _emittedItems; i < snap.Items.Count; i++)
+            // Replace the whole list each snapshot — idempotent, crash-safe.
+            var items = new List<JsonObject>(snap.Items.Count);
+            for (var i = 0; i < snap.Items.Count; i++)
             {
                 var item = snap.Items[i];
-                var node = new JsonObject { ["id"] = item.Id };
+                var node = new JsonObject { ["id"] = item.Id, ["instanceId"] = i.ToString() };
                 if (item.Kind != null) node["kind"] = item.Kind;
                 if (item.Name != null) node["name"] = item.Name;
+                if (item.Count > 0) node["useCount"] = item.Count;
                 node["addedAt"] = item.AddedAt.ToString("o");
-                tx.AddAcquisition(node);
+                items.Add(node);
             }
-            _emittedItems = snap.Items.Count;
+            tx.SetAcquisitions(items);
         }
 
-        private void EmitCompletedRouteStops(PlayUpdate tx, RunSnapshot snap)
+        private static void EmitRoute(PlayUpdate tx, RunSnapshot snap)
         {
-            // GAP: a route stop's endedAt isn't known until the player leaves it,
-            // and there's no helper to update an already-appended stop, so we only
-            // emit stops once they're complete. (docs/api-gaps.md #3.)
-            foreach (var stop in snap.Stages)
+            // Re-arrive/leave every stop each snapshot; instanceId (the visit ordinal,
+            // stable across loops/revisits) makes it idempotent and lets the current
+            // open stage appear immediately rather than lagging a stage behind.
+            for (var i = 0; i < snap.Stages.Count; i++)
             {
-                if (stop.EndedAt is null) continue;
-                var key = stop.Id + "@" + stop.StartedAt.ToString("o");
-                if (!_emittedStops.Add(key)) continue;
-
-                var node = new JsonObject
-                {
-                    ["id"] = stop.Id,
-                    ["startedAt"] = stop.StartedAt.ToString("o"),
-                    ["endedAt"] = stop.EndedAt.Value.ToString("o"),
-                };
-                if (stop.Name != null) node["name"] = stop.Name;
-                tx.AddRouteStop(node);
+                var stop = snap.Stages[i];
+                var instanceId = i.ToString();
+                tx.RouteArrive(stop.Id, instanceId, stop.Name, stop.StartedAt);
+                if (stop.EndedAt is DateTimeOffset leftAt)
+                    tx.RouteLeave(stop.Id, instanceId, leftAt);
             }
         }
 
@@ -127,13 +116,8 @@ namespace ByJP.Ror2.Play.Mapping
             foreach (var ally in snap.Allies)
             {
                 var participant = new JsonObject { ["steam"] = ally.Steam };
-                // GAP: Steam lookup takes a ulong but the participant id is a string
-                // everywhere else; the consumer parses back and forth. (#6.)
-                if (ulong.TryParse(ally.Steam, out var steamId))
-                {
-                    var did = await _client.Steam.LookupDidAsync(steamId).ConfigureAwait(false);
-                    if (did != null) participant["atproto"] = did;
-                }
+                var did = await _client.Steam.LookupDidAsync(ally.Steam).ConfigureAwait(false);
+                if (did != null) participant["atproto"] = did;
                 participants.Add(participant);
             }
             tx.SetPlayingWith(participants);

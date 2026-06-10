@@ -5,6 +5,24 @@ The mapping layer (`mod/Mapping/`) compiles against the package unchanged, so th
 surface is coherent — these are friction points and missing affordances, ranked
 by how much they bit a real game integration.
 
+## Resolution status (package v0.x)
+
+| # | Gap | Status |
+|---|---|---|
+| 1 | Append dedupe / crash duplication | ✅ `SetAcquisitions` (replace) + `AddAcquisition` dedupe by `instanceId` |
+| 2 | No `forkedFrom`/top-level setter | ✅ `PlaySession.ForkPlay(id?)` clones values + sets `forkedFrom` |
+| 3 | Route stops immutable, lag a stage | ✅ `RouteArrive`/`RouteLeave` upsert by `instanceId` (`arrivedAt`/`leftAt`) |
+| 4 | No monotonic/max progress | ✅ `UpdateProgress(name, value, ProgressOp{Add,Subtract,Min,Max})` |
+| 5 | Increment vs absolute observation | ☑️ confirmed fine — both modes load-bearing |
+| 6 | Steam lookup `ulong` vs string | ✅ `SteamDidResolver.LookupDid(string)` everywhere |
+| 7 | One-off achievement records | 🔜 will become `Stats.RecordAchievement(...)` writing to the linked actor.stats record (shape TBD) |
+
+The mod (`mod/Mapping/PlayRecordMapper.cs`) now re-states the full acquisitions
+list and re-arrives/leaves every route stop each snapshot, with no per-emit
+bookkeeping — the package dedupes, so a mid-run crash can't duplicate entries.
+
+Original findings, for the record:
+
 ## What worked well (don't lose these)
 
 - **Three-adapter wiring** (`ILogSink`/`IFileSystem`/`IClock`) mapped onto BepInEx

@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using BepInEx.Logging;
 using RoR2;
@@ -20,8 +19,6 @@ namespace ByJP.Ror2.Play.Ror2
     /// </summary>
     internal sealed class RunTracker
     {
-        private const string AchievementCollection = "me.byjp.pesos.ror2.achievement";
-
         private readonly AtprotoGamingClient _client;
         private readonly Ror2PlayConfig _config;
         private readonly ManualLogSource _log;
@@ -168,23 +165,13 @@ namespace ByJP.Ror2.Play.Ror2
         private void OnAddAchievement(On.RoR2.UserProfile.orig_AddAchievement orig, UserProfile self, string achievementName)
         {
             orig(self, achievementName);
-            // GAP candidate: achievements are a separate collection but the package's
-            // dedup + publish-or-queue only flows through PlaySession/RollingStats;
-            // for a one-off record we drop to the Layer-1 publisher by hand. (#7)
             if (!_active || !_client.Achievements.TryClaim(achievementName)) return;
 
-            var rkey = Tid.FromPlayThrough(DateTimeOffset.UtcNow.ToUnixTimeSeconds(), achievementName);
-            var record = new JsonObject
-            {
-                ["$type"] = AchievementCollection,
-                ["id"] = achievementName,
-                ["unlockedAt"] = DateTimeOffset.UtcNow.ToString("o"),
-            };
-            _ = Task.Run(async () =>
-            {
-                try { await _client.Records.PutAsync(AchievementCollection, rkey, record).ConfigureAwait(false); }
-                catch (Exception ex) { _log.LogError($"achievement publish failed: {ex.Message}"); }
-            });
+            // TODO(package): achievements belong in the linked actor.stats record, not
+            // a separate collection. Switch to client.Stats.RecordAchievement(...) once
+            // that API + the stats achievement shape exist (api-gaps.md #7). Dedup is
+            // already handled above; this just records the unlock for now.
+            _log.LogInfo($"achievement unlocked: {achievementName} (publish pending RecordAchievement)");
         }
 
         private static RunOutcome ClassifyOutcome(GameEndingDef? ending)
