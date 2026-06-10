@@ -64,11 +64,11 @@ namespace ByJP.Ror2.Play.Mapping
         public DateTimeOffset? EndedAt { get; set; }
     }
 
+    // The shared play lexicon's #participant only carries atproto + steam, so a
+    // RoR2 ally is just its SteamID64 here (the mapper backfills the DID). Richer
+    // per-ally data (body, kills) would need a game-specific record, not this one.
     public sealed class Ally
     {
         public string Steam { get; set; } = "";               // SteamID64 as decimal string
-        public string? BodyName { get; set; }
-        public long Kills { get; set; }
-        public long Deaths { get; set; }
     }
 }

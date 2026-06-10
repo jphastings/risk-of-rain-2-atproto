@@ -44,6 +44,12 @@ namespace ByJP.Ror2.Play.Mapping
                 tx.SetSetting("mode", snap.Mode);
                 if (snap.Difficulty is int difficulty) tx.SetSetting("difficulty", difficulty);
                 if (!string.IsNullOrEmpty(snap.Character)) tx.SetSetting("character", snap.Character!);
+                if (snap.Artifacts.Count > 0)
+                {
+                    var artifacts = new JsonArray();
+                    foreach (var artifact in snap.Artifacts) artifacts.Add(artifact);
+                    tx.SetSetting("artifacts", artifacts);
+                }
                 _settingsEmitted = true;
             }
 

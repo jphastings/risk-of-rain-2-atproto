@@ -50,18 +50,19 @@ namespace ByJP.Ror2.Play.Ror2
         {
             var localUser = LocalUserManager.GetFirstLocalUser();
             var master = localUser?.cachedMaster;
-            if (master == null) return;
+            if (localUser == null || master == null) return;
 
+            var bodyName = master.bodyPrefab != null ? master.bodyPrefab.name : null;
             var body = master.GetBody();
             if (body != null)
             {
-                snap.Character = master.bodyPrefab != null ? master.bodyPrefab.name : null;
+                snap.Character = bodyName;
                 snap.CurrentHp = (int)body.healthComponent.health;
+                snap.CurrentLevel = (int)body.level;
                 if (body.inventory != null) CaptureInventory(body.inventory, snap);
             }
 
-            var level = master.GetComponent<PlayerCharacterMasterController>();
-            CaptureStats(localUser, snap);
+            CaptureStats(localUser, bodyName, snap);
         }
 
         private static void CaptureInventory(Inventory inventory, RunSnapshot snap)
@@ -83,11 +84,10 @@ namespace ByJP.Ror2.Play.Ror2
             }
         }
 
-        private static void CaptureStats(LocalUser localUser, RunSnapshot snap)
+        private static void CaptureStats(LocalUser localUser, string? bodyName, RunSnapshot snap)
         {
-            var statsComponent = localUser.currentNetworkUser?.masterController?
-                .GetComponent<PlayerStatsComponent>();
-            var sheet = statsComponent?.currentStats;
+            var sheet = localUser.currentNetworkUser?.masterController?
+                .GetComponent<PlayerStatsComponent>()?.currentStats;
             if (sheet == null) return;
 
             // A representative subset; docs/stats.md lists the full set. Enumerate
@@ -98,12 +98,34 @@ namespace ByJP.Ror2.Play.Ror2
             Add(snap, sheet, "goldCollected", StatDef.goldCollected);
             Add(snap, sheet, "totalItemsCollected", StatDef.totalItemsCollected);
             Add(snap, sheet, "highestLevel", StatDef.highestLevel);
+
+            // Body-keyed stats → nested maps the mapper emits as objects. Sparse:
+            // only the current body, only non-zero. VERIFY: the per-subfield
+            // GetStatValueULong overload and the StatDef names.
+            if (bodyName != null)
+            {
+                AddPerBody(snap, sheet, "damageDealtAs", StatDef.totalDamageDealt, bodyName);
+                AddPerBody(snap, sheet, "killsAs", StatDef.totalKills, bodyName);
+            }
         }
 
         private static void Add(RunSnapshot snap, StatSheet sheet, string key, StatDef def)
         {
             if (def == null) return;
             snap.Stats[key] = (long)sheet.GetStatValueULong(def);
+        }
+
+        private static void AddPerBody(RunSnapshot snap, StatSheet sheet, string mapKey, StatDef def, string bodyName)
+        {
+            if (def == null) return;
+            var value = (long)sheet.GetStatValueULong(def, bodyName);
+            if (value == 0) return;
+            if (!snap.StatMaps.TryGetValue(mapKey, out var map))
+            {
+                map = new Dictionary<string, long>();
+                snap.StatMaps[mapKey] = map;
+            }
+            map[bodyName] = value;
         }
 
         /// <summary>
@@ -137,12 +159,8 @@ namespace ByJP.Ror2.Play.Ror2
                 var networkUser = controller.networkUser;
                 if (networkUser == null) continue;
 
-                snap.Allies.Add(new Ally
-                {
-                    // id.value is a ulong; emit as a decimal string. EGS users have no Steam id.
-                    Steam = networkUser.id.value.ToString(),
-                    BodyName = controller.master?.bodyPrefab != null ? controller.master.bodyPrefab.name : null,
-                });
+                // id.value is a ulong; emit as a decimal string. EGS users have no Steam id.
+                snap.Allies.Add(new Ally { Steam = networkUser.id.value.ToString() });
             }
         }
     }

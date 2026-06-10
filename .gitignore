@@ -6,6 +6,10 @@ obj/
 mod/local.props
 packages/
 
+# Game assemblies copied in for API verification (not redistributable)
+refs/
+*.zip
+
 # Runtime artefacts written next to the plugin
 config.json
 outbox/
