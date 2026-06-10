@@ -15,7 +15,7 @@ by how much they bit a real game integration.
 | 4 | No monotonic/max progress | ✅ `UpdateProgress(name, value, ProgressOp{Add,Subtract,Min,Max})` |
 | 5 | Increment vs absolute observation | ☑️ confirmed fine — both modes load-bearing |
 | 6 | Steam lookup `ulong` vs string | ✅ `SteamDidResolver.LookupDid(string)` everywhere |
-| 7 | One-off achievement records | 🔜 will become `Stats.RecordAchievement(...)` writing to the linked actor.stats record (shape TBD) |
+| 7 | Achievement recording | ✅ `Stats.AchievementsUnlockedAsync(unlocked, total)` writes the count into the linked actor.stats record (the lexicon stores counts, not per-achievement entries) |
 
 The mod (`mod/Mapping/PlayRecordMapper.cs`) now re-states the full acquisitions
 list and re-arrives/leaves every route stop each snapshot, with no per-emit
@@ -103,16 +103,14 @@ and has to branch on "not numeric" (EGS users).
 **Suggestion:** add a `LookupDidAsync(string subject)` overload (or accept the
 decimal string directly), matching how ids appear in records.
 
-### 7. One-off records in other collections miss the high-level ergonomics
-Achievement unlocks are a separate collection (`me.byjp.pesos.ror2.achievement`).
-`AchievementDeduper` handles session dedupe, but to actually write one we drop to
-`Records.PutAsync(collection, rkey, json)` (Layer 1) and hand-mint the rkey with
-`Tid.FromPlayThrough`. That's a fine escape hatch, but those records don't get the
-offline-deferred op model or versions handling the play record enjoys.
-
-**Suggestion:** a generic `OpenRecord(collection, rkey, seed)` returning an editor
-analogous to `PlaySession`, so any collection gets the same transactional,
-offline-safe write path.
+### 7. Achievement recording — RESOLVED
+Original assumption was a separate per-achievement collection. The upstream
+`games.gamesgamesgamesgames.actor.stats` lexicon instead stores achievements as a
+count (`achievements: { unlocked, total }`), so the fix is
+`Stats.AchievementsUnlockedAsync(game, source, unlocked, total)` — it finds/creates
+the stats record, sets the counts (preserving playtime/lastPlayed), and no-ops when
+unchanged so the bulk profile-load re-fire doesn't spam. The mod recomputes
+`(unlocked, total)` on each unlock and pushes them, gated on a count change.
 
 ## Not gaps (verified against source while writing this)
 

@@ -106,6 +106,28 @@ namespace ByJP.Ror2.Play.Ror2
             snap.Stats[key] = (long)sheet.GetStatValueULong(def);
         }
 
+        /// <summary>
+        /// The local player's account-wide RoR2 achievement progress (unlocked /
+        /// total), for the stats record's <c>achievements</c> counts. Returns false
+        /// if the profile isn't available yet.
+        /// </summary>
+        public static bool TryGetAchievementCounts(out int unlocked, out int total)
+        {
+            unlocked = 0;
+            total = 0;
+            var profile = LocalUserManager.GetFirstLocalUser()?.userProfile; // VERIFY: property name
+            if (profile == null) return false;
+
+            // VERIFY: AchievementManager surface — total defs + per-id unlocked check.
+            var ids = AchievementManager.achievementIdentifiers;
+            if (ids == null) return false;
+
+            total = ids.Count;
+            foreach (var id in ids)
+                if (profile.HasAchievement(id)) unlocked++;
+            return true;
+        }
+
         private static void CaptureAllies(RunSnapshot snap)
         {
             var localMaster = LocalUserManager.GetFirstLocalUser()?.cachedMaster;

@@ -32,6 +32,7 @@ namespace ByJP.Ror2.Play.Ror2
         private float _lastEmit;
         private bool _active;
         private string? _runId; // suppress duplicate onRunStartGlobal (save-load re-fires)
+        private int _lastAchievementsUnlocked = -1; // skip the bulk profile-load re-fire
 
         public RunTracker(AtprotoGamingClient client, Ror2PlayConfig config, ManualLogSource log, string modVersion)
         {
@@ -78,6 +79,7 @@ namespace ByJP.Ror2.Play.Ror2
 
             _stages.Clear();
             _openStage = null;
+            _lastAchievementsUnlocked = -1;
             _active = true;
             _lastEmit = float.NegativeInfinity;
             _dirty = true;
@@ -165,13 +167,24 @@ namespace ByJP.Ror2.Play.Ror2
         private void OnAddAchievement(On.RoR2.UserProfile.orig_AddAchievement orig, UserProfile self, string achievementName)
         {
             orig(self, achievementName);
-            if (!_active || !_client.Achievements.TryClaim(achievementName)) return;
+            if (!_active) return;
 
-            // TODO(package): achievements belong in the linked actor.stats record, not
-            // a separate collection. Switch to client.Stats.RecordAchievement(...) once
-            // that API + the stats achievement shape exist (api-gaps.md #7). Dedup is
-            // already handled above; this just records the unlock for now.
-            _log.LogInfo($"achievement unlocked: {achievementName} (publish pending RecordAchievement)");
+            // The stats record stores counts (unlocked/total), not per-achievement
+            // entries — so recompute the totals and push them. Skip when the unlocked
+            // count is unchanged so the bulk profile-load re-fire doesn't spam.
+            if (!StateExtractor.TryGetAchievementCounts(out var unlocked, out var total)) return;
+            if (unlocked == _lastAchievementsUnlocked) return;
+            _lastAchievementsUnlocked = unlocked;
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _client.Stats.AchievementsUnlockedAsync(_config.Game, _config.Source, unlocked, total)
+                        .ConfigureAwait(false);
+                }
+                catch (Exception ex) { _log.LogError($"achievement count publish failed: {ex.Message}"); }
+            });
         }
 
         private static RunOutcome ClassifyOutcome(GameEndingDef? ending)
