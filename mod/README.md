@@ -36,17 +36,22 @@ yours is elsewhere:
 </PropertyGroup></Project>
 ```
 
-The core package isn't on nuget.org yet, so pack it into the local feed first
-(`mod/nuget.config` already points at `../packages`):
+The [`ByJP.AtprotoGaming.Core`](https://www.nuget.org/packages/ByJP.AtprotoGaming.Core)
+package restores from nuget.org — nothing to pack first:
 
 ```sh
-dotnet pack ../../atproto-gaming-dotnet/src/ByJP.AtprotoGaming.Core -o ../packages
 dotnet build                 # compile
 dotnet build -t:Install      # compile + copy into BepInEx/plugins/ByJP.Ror2.Play
 ```
 
 `-t:Install` deploys the plugin DLL plus its managed dependencies (System.Text.Json
-et al.) next to it.
+et al.) next to it. To build against an **unreleased** core, `dotnet pack` it into
+`../packages`, bump its version + the `PackageReference`, and re-add the local feed in
+`mod/nuget.config` (see the note there).
+
+> CI builds the same way but adds `-p:UseGameLibs=true` (publicised RoR2/Unity/BepInEx
+> from the BepInEx NuGet feed), so it needs no local game install. See
+> [`.github/workflows/release.yml`](../.github/workflows/release.yml).
 
 ## Configuring
 

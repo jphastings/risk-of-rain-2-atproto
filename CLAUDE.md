@@ -105,22 +105,21 @@ net472. Two compile paths (gated by `UseGameLibs`):
   5.4.21 — all `IncludeAssets=compile PrivateAssets=all` so nothing game/engine-derived
   ships. Verified to build 0/0 with no local game.
 
-The core package comes via a local NuGet feed (`mod/nuget.config` → `../packages`;
-`dotnet pack` it there first — the mod pins `ByJP.AtprotoGaming.Core` `Version="0.1.0"`,
-so keep that in sync with the core repo's `<Version>`). `dotnet build -t:Install` deploys
-the plugin + its System.Text.Json deps. Optional build-time signing:
-`/p:SigningPrivateKey=did:key:z…`. Needs **BepInEx 5 only** (Harmony bundled; no HookGenPatcher).
+`ByJP.AtprotoGaming.Core` restores from **nuget.org** (the mod pins `Version="0.1.0"`).
+To build against an unreleased core, `dotnet pack` it into `../packages`, bump the version
++ `PackageReference`, and re-add the local feed in `mod/nuget.config` (escape-hatch note is
+there). `dotnet build -t:Install` deploys the plugin + its System.Text.Json deps. Optional
+build-time signing: `/p:SigningPrivateKey=did:key:z…`. Needs **BepInEx 5 only** (Harmony
+bundled; no HookGenPatcher).
 
 ## Releases (`.github/workflows/release.yml`)
 Modelled on the sibling sts2.at release workflow. Triggers on a push to `main` that
 changes `mod/ByJP.Ror2.Play.csproj` (i.e. a `<Version>` bump), skips if the `v<version>`
-tag already exists, else: checks out the sibling core repo + `dotnet pack`s it into the
-feed, builds with `-p:UseGameLibs=true` (so CI needs no game install), zips a
+tag already exists, else: builds with `-p:UseGameLibs=true` (core restores from nuget.org,
+GameLibs from the BepInEx feed — no game install, no sibling-repo checkout), zips a
 `ByJP.Ror2.Play/` folder (plugin + deps + manifest + README), and `gh release create`s it.
 Players download that zip from GitHub Releases (see the root README) or install via a mod
 manager. Optional record-signing key is read from the `MOD_SIGNING_PRIVATE_KEY` secret.
-The sibling-repo checkout assumes the core repo is public (default token); a private one
-would need a PAT.
 
 ## Key design facts
 - Writes the **shared** `actor.play` record (not the old bespoke `me.byjp.pesos.ror2.run`).
