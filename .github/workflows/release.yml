@@ -1,0 +1,85 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+    paths: ['mod/ByJP.Ror2.Play.csproj'] # release when the mod <Version> changes
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  # The engine-agnostic core package lives in a sibling repo; CI checks it out and
+  # packs it into the local feed (mod/nuget.config → ../packages). Switch to a
+  # published NuGet feed here if/when the package is on one.
+  CORE_REPO: jphastings/atproto-gaming-dotnet
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout mod
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Extract mod version
+        id: ver
+        run: |
+          version=$(grep -oP '<Version>\K[^<]+' mod/ByJP.Ror2.Play.csproj)
+          if [[ -z "$version" ]]; then echo "no <Version> in mod/ByJP.Ror2.Play.csproj" >&2; exit 1; fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version"    >> "$GITHUB_OUTPUT"
+
+      - name: Skip if the tag already exists
+        id: check
+        run: |
+          if git ls-remote --tags origin "refs/tags/${{ steps.ver.outputs.tag }}" | grep -q .; then
+            echo "tag ${{ steps.ver.outputs.tag }} exists — nothing to release"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout core package
+        if: steps.check.outputs.skip != 'true'
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: ${{ env.CORE_REPO }}
+          path: core
+
+      - name: Setup .NET
+        if: steps.check.outputs.skip != 'true'
+        uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Pack the core package into the local feed
+        if: steps.check.outputs.skip != 'true'
+        run: dotnet pack core/src/ByJP.AtprotoGaming.Core -c Release -o packages
+
+      - name: Build the mod (publicised GameLibs — no game install needed)
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          dotnet build mod/ByJP.Ror2.Play.csproj -c Release -p:UseGameLibs=true \
+            /p:SigningPrivateKey="${{ secrets.MOD_SIGNING_PRIVATE_KEY }}"
+
+      - name: Stage the release zip
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          stage="release/ByJP.Ror2.Play"
+          mkdir -p "$stage"
+          cp mod/bin/Release/*.dll "$stage/"
+          cp mod/manifest.json     "$stage/"
+          cp README.md             "$stage/"
+          ( cd release && zip -r "ByJP_Ror2_atproto_Play_${{ steps.ver.outputs.version }}.zip" ByJP.Ror2.Play )
+
+      - name: Create the release
+        if: steps.check.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.ver.outputs.tag }}" \
+            --repo "${{ github.repository }}" \
+            --title "ByJP RoR2 atproto Play ${{ steps.ver.outputs.tag }}" \
+            --generate-notes \
+            "release/ByJP_Ror2_atproto_Play_${{ steps.ver.outputs.version }}.zip"

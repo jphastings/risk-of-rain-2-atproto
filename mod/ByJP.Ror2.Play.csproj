@@ -41,17 +41,33 @@
     <BepInExPlugins>$(Ror2Dir)/BepInEx/plugins</BepInExPlugins>
   </PropertyGroup>
 
-  <!-- Game + engine assemblies, referenced in place (never copied to output). -->
-  <ItemGroup>
+  <!-- Two ways to get RoR2/Unity/BepInEx at compile time:
+       • default — reference a local game install in place (verified build; also what
+         `-t:Install` deploys against).
+       • -p:UseGameLibs=true — reference the publicised GameLibs + BepInEx from the
+         BepInEx NuGet feed, so CI builds with no (non-redistributable) game install.
+         Harmony (HarmonyLib) comes from BepInEx; no HookGenPatcher/MMHOOK either way. -->
+  <PropertyGroup>
+    <UseGameLibs Condition="'$(UseGameLibs)' == ''">false</UseGameLibs>
+  </PropertyGroup>
+
+  <!-- Local game install (in place, never copied to output). -->
+  <ItemGroup Condition="'$(UseGameLibs)' != 'true'">
     <Reference Include="RoR2"><HintPath>$(Managed)/RoR2.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="UnityEngine"><HintPath>$(Managed)/UnityEngine.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="UnityEngine.CoreModule"><HintPath>$(Managed)/UnityEngine.CoreModule.dll</HintPath><Private>false</Private></Reference>
     <!-- RoR2's Run/Stage/CharacterMaster etc. derive from UNet's NetworkBehaviour. -->
     <Reference Include="com.unity.multiplayer-hlapi.Runtime"><HintPath>$(Managed)/com.unity.multiplayer-hlapi.Runtime.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="BepInEx"><HintPath>$(BepInExCore)/BepInEx.dll</HintPath><Private>false</Private></Reference>
-    <!-- Harmony (HarmonyLib) ships with BepInEx; the mod's one game patch uses it,
-         so there's no HookGenPatcher / MMHOOK dependency. -->
     <Reference Include="0Harmony"><HintPath>$(BepInExCore)/0Harmony.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+
+  <!-- CI: publicised, body-stripped assemblies from the BepInEx feed (see nuget.config).
+       Compile-only so none of them ship in the plugin output. -->
+  <ItemGroup Condition="'$(UseGameLibs)' == 'true'">
+    <PackageReference Include="RiskOfRain2.GameLibs" Version="1.4.1-r.0" IncludeAssets="compile" PrivateAssets="all" />
+    <PackageReference Include="UnityEngine.Modules" Version="2021.3.33" IncludeAssets="compile" PrivateAssets="all" />
+    <PackageReference Include="BepInEx.Core" Version="5.4.21" IncludeAssets="compile" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>
@@ -75,8 +91,9 @@
     <Delete Files="$(_SigningKeyFile)" />
   </Target>
 
-  <Target Name="CheckRor2Dir" BeforeTargets="ResolveAssemblyReferences" Condition="!Exists('$(Managed)/RoR2.dll')">
-    <Error Text="RoR2.dll not found at '$(Managed)'. Set Ror2Dir in mod/local.props to your game install." />
+  <Target Name="CheckRor2Dir" BeforeTargets="ResolveAssemblyReferences"
+          Condition="'$(UseGameLibs)' != 'true' and !Exists('$(Managed)/RoR2.dll')">
+    <Error Text="RoR2.dll not found at '$(Managed)'. Set Ror2Dir in mod/local.props to your game install, or build with -p:UseGameLibs=true to use the NuGet game libs." />
   </Target>
 
   <!-- `dotnet build -t:Install` deploys the plugin + its managed deps. -->

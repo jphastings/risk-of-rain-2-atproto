@@ -33,9 +33,8 @@ package, so the same plumbing can power mods for other games.
    game folder so `winhttp.dll` sits next to `Risk of Rain 2.exe`).
 2. Download the latest **`ByJP_Ror2_atproto_Play_x.y.z.zip`** from the
    [**Releases page**](https://github.com/jphastings/risk-of-rain-2-atproto/releases/latest).
-3. Unzip it into
-   `Risk of Rain 2/BepInEx/plugins/ByJP.Ror2.Play/` — the zip contains the plugin DLL,
-   its dependencies, and `manifest.json`.
+3. Unzip it into `Risk of Rain 2/BepInEx/plugins/` — the zip contains a
+   `ByJP.Ror2.Play/` folder with the plugin, its dependencies, and `manifest.json`.
 4. [Configure your handle + app password](#configure).
 5. Launch the game once.
 
