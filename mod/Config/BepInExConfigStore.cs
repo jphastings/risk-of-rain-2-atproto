@@ -1,3 +1,4 @@
+using System;
 using BepInEx.Configuration;
 using ByJP.AtprotoGaming.Core;
 
@@ -22,6 +23,14 @@ namespace ByJP.Ror2.Play.Config
         private readonly ConfigEntry<string> _cachedDid;
         private readonly ConfigEntry<string> _cachedPds;
         private readonly ConfigEntry<string> _statsRkey;
+        private readonly ConfigEntry<string> _status;
+
+        /// <summary>
+        /// Raised when the player edits Handle or AppPassword (the conventional
+        /// "save" signal). The plugin re-runs login so the credentials are checked
+        /// live and <see cref="SetStatus"/> reflects the result.
+        /// </summary>
+        public event Action? CredentialsChanged;
 
         public BepInExConfigStore(ConfigFile file)
         {
@@ -29,6 +38,9 @@ namespace ByJP.Ror2.Play.Config
                 "Your atproto handle, e.g. you.bsky.social (or a did:plc:…). Leave blank to disable publishing.");
             _appPassword = file.Bind("Login", "AppPassword", "",
                 "An atproto APP PASSWORD — create one at https://bsky.app/settings/app-passwords. NOT your main password.");
+            _status = file.Bind("Login", "Status", "",
+                new ConfigDescription("Live login status — read-only, updated when you change your handle/app password.",
+                    null, new ConfigurationManagerAttributes { ReadOnly = true }));
             _source = file.Bind("Recording", "Source", StatsSource.Steam,
                 "The platform you play on: steam, epic, gog, playstation, xbox, nintendo, itchio or humble.");
             _throttleSeconds = file.Bind("Recording", "ThrottleSeconds", 60,
@@ -48,6 +60,9 @@ namespace ByJP.Ror2.Play.Config
             _config.CachedPds = _cachedPds.Value;
             _config.StatsRkey = _statsRkey.Value;
             // Game stays at the Ror2PlayConfig default — internal, not player-editable.
+
+            _handle.SettingChanged += OnCredentialChanged;
+            _appPassword.SettingChanged += OnCredentialChanged;
         }
 
         /// <summary>The typed config the RoR2 layer reads (game/source/throttle).</summary>
@@ -57,6 +72,16 @@ namespace ByJP.Ror2.Play.Config
 
         public bool HasCredentials =>
             !string.IsNullOrEmpty(_config.Handle) && !string.IsNullOrEmpty(_config.AppPassword);
+
+        /// <summary>Shows a human-readable login result in the read-only Status line.</summary>
+        public void SetStatus(string status) => _status.Value = status;
+
+        private void OnCredentialChanged(object sender, EventArgs e)
+        {
+            _config.Handle = _handle.Value;
+            _config.AppPassword = _appPassword.Value;
+            CredentialsChanged?.Invoke();
+        }
 
         public void Save()
         {

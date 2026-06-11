@@ -131,3 +131,11 @@ would need a PAT.
   count change in `RunTracker` so the profile-load re-fire is skipped. Trigger is a Harmony
   postfix on `UserProfile.AddAchievement` (`AchievementPatch`), not an MMHOOK hook.
 - Steam id passed as a string to `Steam.LookupDidAsync`.
+- Config is BepInEx-backed (`BepInExConfigStore`): `[Login] Handle`/`AppPassword`,
+  `[Recording] Source`/`ThrottleSeconds`, auto-managed `[Cache]`. Credentials are
+  **re-validated live** — editing Handle/AppPassword fires `SettingChanged` →
+  `CredentialsChanged` → `LoginAsync`, and a **read-only `[Login] Status`** line shows
+  `✓ signed in as …` / `✗ rejected: …` (in-game ConfigurationManager + the log). BepInEx
+  has no save-veto hook, so we validate-and-report rather than literally block a bad save.
+  `ConfigurationManagerAttributes` (`ReadOnly`) is duck-typed by ConfigurationManager;
+  harmless if that plugin is absent.

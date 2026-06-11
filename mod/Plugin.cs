@@ -55,9 +55,18 @@ namespace ByJP.Ror2.Play
                 PackageVersionOverride = null,
             });
 
-            // Main-menu badge / installer health check would subscribe here.
+            // Surface every login transition in the read-only config Status line (live
+            // ✓/✗ feedback in the in-game config menu) and the BepInEx log.
             _client.Auth.Changed += () =>
-                Logger.LogInfo($"atproto: {_client.Auth.Status} ({_client.Auth.Handle ?? "—"})");
+            {
+                var line = DescribeAuth(_client.Auth);
+                config.SetStatus(line);
+                Logger.LogInfo($"atproto: {line}");
+            };
+
+            // Re-check the credentials the moment the player edits them (the config
+            // system's "save" signal) — they get an immediate ✓/✗ instead of guessing.
+            config.CredentialsChanged += () => Task.Run(_client.LoginAsync);
 
             // No engine threads in the package — we own the task.
             _ = Task.Run(_client.LoginAsync);
@@ -67,6 +76,20 @@ namespace ByJP.Ror2.Play
             StartCoroutine(_tracker.EmitLoop());
 
             Logger.LogInfo($"{PluginInfo.Name} {PluginInfo.Version} loaded");
+        }
+
+        /// <summary>A short, player-facing description of the current login state.</summary>
+        private static string DescribeAuth(AuthState auth)
+        {
+            switch (auth.Status)
+            {
+                case AuthStatus.Unconfigured: return "not configured — enter your handle and an app password";
+                case AuthStatus.Checking: return "checking credentials…";
+                case AuthStatus.Ok: return $"✓ signed in as {auth.Handle}";
+                case AuthStatus.Failed: return $"✗ rejected: {auth.Error}";
+                case AuthStatus.Offline: return $"offline — will retry; runs queue under {auth.Handle}";
+                default: return auth.Status.ToString();
+            }
         }
 
         /// <summary>
