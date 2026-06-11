@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using BepInEx.Logging;
+using HarmonyLib;
 using RoR2;
 using UnityEngine;
 using ByJP.AtprotoGaming.Core;
@@ -49,7 +50,11 @@ namespace ByJP.Ror2.Play.Ror2
             Run.onServerGameOver += OnServerGameOver;
             Run.onClientGameOverGlobal += OnClientGameOver;
             Run.onRunDestroyGlobal += OnRunDestroy;
-            On.RoR2.UserProfile.AddAchievement += OnAddAchievement; // VERIFY signature on build
+
+            // A Harmony patch instead of an On.RoR2 (MMHOOK) hook keeps BepInEx as the
+            // mod's only dependency — Harmony ships inside it, no HookGenPatcher needed.
+            AchievementPatch.Added += OnAchievementAdded;
+            new Harmony(PluginInfo.Guid).PatchAll(typeof(AchievementPatch));
         }
 
         /// <summary>Drives throttle + safety-net emission; started as a coroutine on the plugin.</summary>
@@ -164,9 +169,8 @@ namespace ByJP.Ror2.Play.Ror2
             _openStage = null;
         }
 
-        private void OnAddAchievement(On.RoR2.UserProfile.orig_AddAchievement orig, UserProfile self, string achievementName)
+        private void OnAchievementAdded()
         {
-            orig(self, achievementName);
             if (!_active) return;
 
             // The stats record stores counts (unlocked/total), not per-achievement
@@ -189,15 +193,11 @@ namespace ByJP.Ror2.Play.Ror2
 
         private static RunOutcome ClassifyOutcome(GameEndingDef? ending)
         {
+            // No ending def means the run was left, not ended by the game.
             if (ending == null) return RunOutcome.Abandoned;
-            switch (ending.cachedName)
-            {
-                case "MainEnding":
-                case "VoidEnding":
-                    return RunOutcome.Succeeded;
-                default:
-                    return RunOutcome.Failed;
-            }
+            // isWin is the engine's own win/lose flag — robuster than name-matching
+            // each ending def (MainEnding/VoidEnding/ObliterationEnding/…).
+            return ending.isWin ? RunOutcome.Succeeded : RunOutcome.Failed;
         }
     }
 }

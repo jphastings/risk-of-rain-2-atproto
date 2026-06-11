@@ -12,9 +12,9 @@ namespace ByJP.Ror2.Play.Ror2
     /// aren't thread-safe) before handing the snapshot to a background emit.
     /// </summary>
     /// <remarks>
-    /// Identifier conventions follow docs/stats.md (stable internal names, not
-    /// localised strings). Signatures marked <c>VERIFY</c> need a check against the
-    /// installed game version's <c>MMHOOK_RoR2.dll</c> — field spellings drift.
+    /// Every member here was verified against the shipped <c>RoR2.dll</c> metadata
+    /// (see the dumper in the package repo's working notes). Identifier conventions
+    /// follow docs/stats.md (stable internal names, not localised strings).
     /// </remarks>
     internal static class StateExtractor
     {
@@ -29,20 +29,25 @@ namespace ByJP.Ror2.Play.Ror2
                 StageClearCount = run.stageClearCount,
             };
 
-            if (run is EclipseRun eclipse) snap.Difficulty = eclipse.eclipseLevel;
+            snap.Difficulty = run is EclipseRun
+                ? EclipseRun.GetEclipseLevelFromRuleBook(run.ruleBook)
+                : (int)run.selectedDifficulty;
 
-            CaptureArtifacts(run, snap);
+            CaptureArtifacts(snap);
             CaptureLocalPlayer(snap);
             CaptureAllies(snap);
             return snap;
         }
 
-        private static void CaptureArtifacts(Run run, RunSnapshot snap)
+        private static void CaptureArtifacts(RunSnapshot snap)
         {
-            // VERIFY: ruleBook walk for active artifact choices.
-            foreach (var artifact in ArtifactCatalog.artifactDefs)
+            var artifacts = RunArtifactManager.instance;
+            if (artifacts == null) return;
+
+            for (var i = 0; i < ArtifactCatalog.artifactCount; i++)
             {
-                if (run.IsArtifactEnabled(artifact)) snap.Artifacts.Add(artifact.cachedName);
+                var def = ArtifactCatalog.GetArtifactDef((ArtifactIndex)i);
+                if (def != null && artifacts.IsArtifactEnabled(def)) snap.Artifacts.Add(def.cachedName);
             }
         }
 
@@ -57,7 +62,7 @@ namespace ByJP.Ror2.Play.Ror2
             if (body != null)
             {
                 snap.Character = bodyName;
-                snap.CurrentHp = (int)body.healthComponent.health;
+                if (body.healthComponent != null) snap.CurrentHp = (int)body.healthComponent.health;
                 snap.CurrentLevel = (int)body.level;
                 if (body.inventory != null) CaptureInventory(body.inventory, snap);
             }
@@ -67,10 +72,9 @@ namespace ByJP.Ror2.Play.Ror2
 
         private static void CaptureInventory(Inventory inventory, RunSnapshot snap)
         {
-            // itemAcquisitionOrder is chronological; the mapper emits only the tail
-            // it hasn't seen, so re-reading the whole list each snapshot is fine.
-            var order = inventory.itemAcquisitionOrder;
-            foreach (var itemIndex in order)
+            // itemAcquisitionOrder is chronological; the mapper re-states the whole
+            // list each snapshot (deduped by instanceId), so re-reading it is fine.
+            foreach (var itemIndex in inventory.itemAcquisitionOrder)
             {
                 var def = ItemCatalog.GetItemDef(itemIndex);
                 if (def == null) continue;
@@ -78,7 +82,7 @@ namespace ByJP.Ror2.Play.Ror2
                 {
                     Id = def.name,
                     Kind = "item",
-                    Count = inventory.GetItemCount(itemIndex),
+                    Count = inventory.GetItemCountEffective(itemIndex),
                     AddedAt = DateTimeOffset.UtcNow,
                 });
             }
@@ -86,12 +90,10 @@ namespace ByJP.Ror2.Play.Ror2
 
         private static void CaptureStats(LocalUser localUser, string? bodyName, RunSnapshot snap)
         {
-            var sheet = localUser.currentNetworkUser?.masterController?
-                .GetComponent<PlayerStatsComponent>()?.currentStats;
+            var statsComponent = localUser.cachedStatsComponent;
+            var sheet = statsComponent != null ? statsComponent.currentStats : null;
             if (sheet == null) return;
 
-            // A representative subset; docs/stats.md lists the full set. Enumerate
-            // StatDef.allStatDefs at load and log it before trusting these names.
             Add(snap, sheet, "totalKills", StatDef.totalKills);
             Add(snap, sheet, "totalDamageDealt", StatDef.totalDamageDealt);
             Add(snap, sheet, "totalDamageTaken", StatDef.totalDamageTaken);
@@ -100,12 +102,11 @@ namespace ByJP.Ror2.Play.Ror2
             Add(snap, sheet, "highestLevel", StatDef.highestLevel);
 
             // Body-keyed stats → nested maps the mapper emits as objects. Sparse:
-            // only the current body, only non-zero. VERIFY: the per-subfield
-            // GetStatValueULong overload and the StatDef names.
+            // only the current body, only non-zero values.
             if (bodyName != null)
             {
-                AddPerBody(snap, sheet, "damageDealtAs", StatDef.totalDamageDealt, bodyName);
-                AddPerBody(snap, sheet, "killsAs", StatDef.totalKills, bodyName);
+                AddPerBody(snap, sheet, "damageDealtAs", PerBodyStatDef.damageDealtAs, bodyName);
+                AddPerBody(snap, sheet, "killsAs", PerBodyStatDef.killsAs, bodyName);
             }
         }
 
@@ -115,7 +116,7 @@ namespace ByJP.Ror2.Play.Ror2
             snap.Stats[key] = (long)sheet.GetStatValueULong(def);
         }
 
-        private static void AddPerBody(RunSnapshot snap, StatSheet sheet, string mapKey, StatDef def, string bodyName)
+        private static void AddPerBody(RunSnapshot snap, StatSheet sheet, string mapKey, PerBodyStatDef def, string bodyName)
         {
             if (def == null) return;
             var value = (long)sheet.GetStatValueULong(def, bodyName);
@@ -137,11 +138,10 @@ namespace ByJP.Ror2.Play.Ror2
         {
             unlocked = 0;
             total = 0;
-            var profile = LocalUserManager.GetFirstLocalUser()?.userProfile; // VERIFY: property name
+            var profile = LocalUserManager.GetFirstLocalUser()?.userProfile;
             if (profile == null) return false;
 
-            // VERIFY: AchievementManager surface — total defs + per-id unlocked check.
-            var ids = AchievementManager.achievementIdentifiers;
+            var ids = AchievementManager.readOnlyAchievementIdentifiers;
             if (ids == null) return false;
 
             total = ids.Count;
@@ -159,8 +159,11 @@ namespace ByJP.Ror2.Play.Ror2
                 var networkUser = controller.networkUser;
                 if (networkUser == null) continue;
 
-                // id.value is a ulong; emit as a decimal string. EGS users have no Steam id.
-                snap.Allies.Add(new Ally { Steam = networkUser.id.value.ToString() });
+                // Only steam-backed users have a SteamID64 we can resolve to a DID;
+                // EGS/EOS users have no steam id, so skip them.
+                var steamId = networkUser.id.steamId;
+                if (!steamId.isSteam) continue;
+                snap.Allies.Add(new Ally { Steam = steamId.ToSteamID() });
             }
         }
     }

@@ -6,68 +6,100 @@ atproto PDS as a `games.gamesgamesgamesgames.actor.play` record, via the
 Built both as a real mod and as the first consumer used to pressure-test that package
 (all 7 API gaps found are fixed — see `docs/api-gaps.md`).
 
-## 🚩 ACTIVE TASK: make the mod actually compile against the real game
-The package side is solid (154 tests). The **RoR2-facing glue has never been compiled
-against the game assemblies** — every RoR2 type reference is an assumption. JP is
-shipping the game's managed assemblies so I can verify exact signatures.
+## ✅ Compiles against the real game (2026-06-11). Remaining: a live runtime playtest.
+The whole mod now builds **0 warnings / 0 errors** against the shipped RoR2 assemblies +
+BepInEx 5.4.23 core + the Core package. Every RoR2 type reference was checked against
+`RoR2.dll` metadata (not guessed). What's left is a *runtime* test on a real box: JP builds,
+deploys, and we watch a run produce a `.play` record.
 
-**Next steps (resume here):**
-1. Wait for `refs/` to contain the game DLLs — JP zips
-   `…/steamapps/common/Risk of Rain 2/Risk of Rain 2_Data/Managed/` (+ optionally
-   `MMHOOK_RoR2.dll`) and drops it at `ror2.at/refs/` (gitignored; not redistributable).
-   He'll say "it's there."
-2. Write a `MetadataLoadContext` reflection dumper (metadata-only, no Unity runtime,
-   no game execution) — load `RoR2.dll` with a `PathAssemblyResolver` over the whole
-   `Managed/` folder; print exact signatures for the checklist below.
-3. Rewrite `mod/Ror2/StateExtractor.cs`, `mod/Ror2/RunTracker.cs`, `mod/Plugin.cs`
-   against ground truth. Then JP builds on a real box (`dotnet build -t:Install`) and
-   we iterate on remaining errors + watch a run. (SteamOS/Steam Deck is immutable & has
-   no SDK, so introspect the DLLs on the Mac, don't build on the Deck.)
+**BepInEx is the mod's ONLY dependency** (see `manifest.json`). The one game patch we need
+(achievement unlocks) is a **Harmony postfix** (`mod/Ror2/AchievementPatch.cs`) — Harmony
+ships inside BepInEx — so there is **no HookGenPatcher / `MMHOOK_RoR2.dll` dependency**.
+Distribute via Thunderstore; r2modman / the Thunderstore Mod Manager then auto-installs
+BepInEx, making it a one-click install for players.
 
-### RoR2 API surface to verify (every line in `mod/Ror2/*` is a candidate; key ones):
-- **Events/hooks** (`RunTracker.Hook`): `Run.onRunStartGlobal`, `Stage.onStageStartGlobal`,
-  `Run.onServerGameOver`, `Run.onClientGameOverGlobal`, `Run.onRunDestroyGlobal` (exact
-  delegate shapes), and `On.RoR2.UserProfile.AddAchievement` (the `orig_AddAchievement`
-  delegate — needs `MMHOOK_RoR2.dll`, or derive from `RoR2.dll`'s original method).
-- **Run**: `seed` (ulong), `GetStartTimeUtc()`, `GetRunStopwatch()`, `stageClearCount`,
-  `IsArtifactEnabled(ArtifactDef)`, `Run.instance`; `EclipseRun.eclipseLevel`;
-  `GameEndingDef.cachedName`; `RunReport.gameEnding`; `ArtifactCatalog.artifactDefs` + `.cachedName`.
+### How the Mac compile-verification is wired (reproduce any time)
+- **Reflection dumper** (the source of truth for every signature):
+  `/tmp/ror2dump` — a `MetadataLoadContext` over `refs/Managed/*.dll`. Commands:
+  `types <T…>`, `member <T> <needle>`, `find <substr>`, `enum <T>`, `hook <T> <method>`
+  (derives the MonoMod `orig_`/`hook_` delegate shape from the original method).
+  Run: `cd /tmp/ror2dump && dotnet run -- /Users/jp/src/personal/ror2.at/refs/Managed types RoR2.Run`.
+- **`refs/` layout** (gitignored, Mac-only, not redistributable):
+  - `refs/Managed/` — the game's full `Managed/` folder (copied from the external drive;
+    all 143 DLLs so base-type chains like `NetworkBehaviour` resolve).
+  - `refs/install/` — a fake install tree `local.props` points `Ror2Dir` at:
+    `Risk of Rain 2_Data/Managed` → symlink to `../../Managed`; `BepInEx/core/` (the
+    downloaded BepInEx 5.4.23.2 core DLLs, incl. `0Harmony.dll`). (No MMHOOK needed any
+    more — the achievement patch uses Harmony. A leftover `BepInEx/plugins/MMHOOK/`
+    compile shim from the earlier MMHOOK approach may still sit here, now unreferenced.)
+- **Reproduce the full build:** `dotnet pack ../atproto-gaming-dotnet/src/ByJP.AtprotoGaming.Core
+  -c Release -o packages` (fills the local feed), then `cd mod && dotnet build`. `mod/local.props`
+  (gitignored) sets `Ror2Dir=…/ror2.at/refs/install`.
+- Steam Deck is immutable & SDK-less → introspect/build on the Mac, never on the Deck.
+
+### Verified RoR2 surface — ground-truth signatures (corrected from the old guesses)
+- **Events/hooks** (`RunTracker.Hook`): `Run.onRunStartGlobal` `Action<Run>`,
+  `Stage.onStageStartGlobal` `Action<Stage>`, `Run.onServerGameOver` `Action<Run,GameEndingDef>`,
+  `Run.onClientGameOverGlobal` `Action<Run,RunReport>`, `Run.onRunDestroyGlobal` `Action<Run>`.
+  Achievements: a **Harmony postfix** on `UserProfile.AddAchievement(string, bool)`
+  (`AchievementPatch`) raises an event; RunTracker recomputes the count. (Was an
+  `On.RoR2` MMHOOK hook — switched to Harmony to drop the HookGenPatcher dependency.)
+- **Run**: `seed` (ulong), `GetStartTimeUtc()`→`DateTime`, `GetRunStopwatch()`→`float`,
+  `stageClearCount` (int), `Run.instance`, `ruleBook`, `selectedDifficulty`.
+  ⚠️ **No `Run.IsArtifactEnabled`** → use `RunArtifactManager.instance.IsArtifactEnabled(ArtifactDef)`,
+  iterating `ArtifactCatalog.GetArtifactDef((ArtifactIndex)i)` for `i in 0..artifactCount`
+  (`ArtifactCatalog.artifactDefs` is **private**).
+  ⚠️ **No `EclipseRun.eclipseLevel`** → `EclipseRun.GetEclipseLevelFromRuleBook(run.ruleBook)`.
+  Outcome: `GameEndingDef.isWin` (cleaner than name-matching); `RunReport.gameEnding`.
 - **Player**: `LocalUserManager.GetFirstLocalUser()`; `LocalUser.cachedMaster`/`.userProfile`/
-  `.currentNetworkUser`; `CharacterMaster.GetBody()`/`.bodyPrefab.name`;
-  `CharacterBody.healthComponent.health`/`.level`/`.inventory`;
-  `Inventory.itemAcquisitionOrder`/`.GetItemCount(ItemIndex)`; `ItemCatalog.GetItemDef`;
-  `NetworkUser.masterController`/`.id.value`; `PlayerCharacterMasterController.instances`/`.master`/`.networkUser`.
-- **Stats**: `PlayerStatsComponent.currentStats` (`StatSheet`);
-  `StatSheet.GetStatValueULong(StatDef)` and the per-subfield overload
-  `GetStatValueULong(StatDef, string)`; `StatDef.totalKills/totalDamageDealt/totalDamageTaken/
-  goldCollected/totalItemsCollected/highestLevel`.
-- **Achievements**: `AchievementManager.achievementIdentifiers` (count + ids);
-  `UserProfile.HasAchievement(string)`.
-- **Unity/BepInEx**: `Application.version`, `Time.unscaledTime`, `WaitForSeconds`,
-  `BaseUnityPlugin`/`BepInPlugin`/`ManualLogSource`.
+  `.cachedStatsComponent` (use this for the StatSheet, not the networkUser→masterController walk);
+  `CharacterMaster.GetBody()`/`.bodyPrefab.name`/`.inventory`;
+  `CharacterBody.healthComponent.health` (float)/`.level` (**float**)/`.inventory`;
+  `Inventory.itemAcquisitionOrder`/`.GetItemCountEffective(ItemIndex)` (`GetItemCount` is
+  `[Obsolete]`); `ItemCatalog.GetItemDef`; `PlayerCharacterMasterController.instances`/`.master`/`.networkUser`.
+- **Steam id**: `NetworkUser.id` is a `NetworkUserId` (struct) with a `steamId` getter →
+  `RoR2.PlatformID`; guard `pid.isSteam`, emit `pid.ToSteamID()` (decimal SteamID64 string).
+  (Old `id.value.ToString()` was wrong for non-steam users.)
+- **Stats** (`RoR2.Stats`): `PlayerStatsComponent.currentStats` (`StatSheet`);
+  `StatSheet.GetStatValueULong(StatDef)`; per-body overload is
+  `GetStatValueULong(PerBodyStatDef, string bodyName)` (**`PerBodyStatDef`**, not `StatDef`) —
+  use `PerBodyStatDef.damageDealtAs`/`killsAs`. `StatDef.totalKills/totalDamageDealt/
+  totalDamageTaken/goldCollected/totalItemsCollected/highestLevel` confirmed.
+- **Achievements** (`RoR2`): `AchievementManager.readOnlyAchievementIdentifiers`
+  (`achievementIdentifiers` is **private**) + `UserProfile.HasAchievement(string)`.
+- **Build refs**: the csproj needs **`com.unity.multiplayer-hlapi.Runtime`** (UNet's
+  `NetworkBehaviour`, the base of Run/Stage/CharacterMaster/etc.) on top of RoR2 +
+  UnityEngine + UnityEngine.CoreModule + BepInEx + 0Harmony. (No MMHOOK ref.)
+- **Unity/BepInEx** (unchanged, stable): `Application.version`, `Time.unscaledTime`,
+  `WaitForSeconds`, `BaseUnityPlugin`/`BepInPlugin`/`ManualLogSource`.
 
 ## Layout
 - `mod/Mapping/` — **engine-free**, references only the package. `RunSnapshot` (plain DTO)
   + `PlayRecordMapper` (drives `OpenPlay`/`BeginUpdate`/`CommitAsync`/`Stats`/`Steam`).
   This is the layer that found the package gaps; it **compiles** (see verification).
-- `mod/Ror2/` — **RoR2-coupled, VERIFY-flagged, never compiled**: `StateExtractor`
-  (Run/StatSheet/inventory → snapshot) + `RunTracker` (lifecycle hooks + dirty-bit/throttle
-  emit coroutine + achievement-count push).
+- `mod/Ror2/` — **RoR2-coupled** (now compiled against the real game): `StateExtractor`
+  (Run/StatSheet/inventory → snapshot), `RunTracker` (lifecycle hooks + dirty-bit/throttle
+  emit coroutine + achievement-count push), `AchievementPatch` (Harmony postfix on
+  `UserProfile.AddAchievement`).
 - `mod/Plugin.cs` (BepInEx entry: wires 3 adapters, config, login on a Task, hooks),
   `mod/Adapters/BepInExLogSink.cs`, `mod/Config/Ror2PlayConfig.cs`.
 
-## Verifying the package-facing code (do this after any Mapping/ change)
-The mapping layer is compiled against the real package at `/tmp/mapcheck`:
-`cd /tmp/mapcheck && dotnet build` (its `.csproj` `Compile Include`s `mod/Mapping/*.cs`
-and `ProjectReference`s the package). **0 errors = the package-facing code is type-correct.**
-The `mod/Ror2/*` glue is NOT in mapcheck (needs game DLLs).
+## Verifying changes
+- **Whole mod** (preferred, now that `refs/` exists): `cd mod && dotnet build` — compiles
+  every file against the real game DLLs + BepInEx core (incl. 0Harmony) + package. See the
+  reproduce-the-build steps above. This supersedes mapcheck.
+- **Mapping layer only** (no game DLLs needed): `/tmp/mapcheck` `Compile Include`s
+  `mod/Mapping/*.cs` and `ProjectReference`s the package. Handy on a machine without `refs/`.
+- **Game-API only, fast** (`/tmp/ror2check`): compiles just `StateExtractor.cs` +
+  `RunSnapshot.cs` against `refs/Managed/*.dll` (no BepInEx/package) — isolates RoR2 type errors.
 
 ## Build setup (`mod/ByJP.Ror2.Play.csproj`)
-net472. Game/BepInEx/`MMHOOK_RoR2.dll` referenced in-place via HintPath into the install
+net472. Game + BepInEx assemblies referenced in-place via HintPath into the install
 (auto-detected per-OS; override `Ror2Dir` in `mod/local.props`). Package via local NuGet
 feed (`mod/nuget.config` → `../packages`; `dotnet pack` the package there first).
 `dotnet build -t:Install` deploys the plugin + its System.Text.Json deps. Optional
-build-time signing: `/p:SigningPrivateKey=did:key:z…`. Needs BepInEx 5 + HookGenPatcher.
+build-time signing: `/p:SigningPrivateKey=did:key:z…`. Needs **BepInEx 5 only** (Harmony
+is bundled; no HookGenPatcher).
 
 ## Key design facts
 - Writes the **shared** `actor.play` record (not the old bespoke `me.byjp.pesos.ror2.run`).
@@ -75,5 +107,6 @@ build-time signing: `/p:SigningPrivateKey=did:key:z…`. Needs BepInEx 5 + HookG
 - Mapper re-states full acquisitions (`SetAcquisitions`) + re-arrives/leaves every route
   stop each snapshot, keyed by ordinal `instanceId` → crash-safe, no per-emit bookkeeping.
 - Achievements → `Stats.AchievementsUnlockedAsync(unlocked, total)` (counts), gated on a
-  count change in `RunTracker` so the profile-load re-fire is skipped.
+  count change in `RunTracker` so the profile-load re-fire is skipped. Trigger is a Harmony
+  postfix on `UserProfile.AddAchievement` (`AchievementPatch`), not an MMHOOK hook.
 - Steam id passed as a string to `Steam.LookupDidAsync`.
