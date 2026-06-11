@@ -36,9 +36,15 @@ namespace ByJP.Ror2.Play
         {
             var log = new BepInExLogSink(Logger);
 
-            // config.json + outbox/ live next to this DLL.
+            // Credentials + cache live in the BepInEx config (.cfg, editable in the mod
+            // manager); the offline outbox/ still lives next to this DLL.
             var fs = FileSystem.NextTo<Plugin>();
-            var config = ConfigStore<Ror2PlayConfig>.LoadOrCreate(fs, log);
+            var config = new BepInExConfigStore(Config);
+
+            if (!config.HasCredentials)
+                Logger.LogWarning(
+                    "atproto publishing is OFF — set Handle and AppPassword in this mod's config " +
+                    "(BepInEx/config/me.byjp.pesos.ror2.play.cfg, or the mod manager's config editor).");
 
             _client = new AtprotoGamingClient(new AtprotoGamingOptions
             {
@@ -56,7 +62,7 @@ namespace ByJP.Ror2.Play
             // No engine threads in the package — we own the task.
             _ = Task.Run(_client.LoginAsync);
 
-            _tracker = new RunTracker(_client, config.Current, Logger, PluginInfo.Version);
+            _tracker = new RunTracker(_client, config.Settings, Logger, PluginInfo.Version);
             _tracker.Hook();
             StartCoroutine(_tracker.EmitLoop());
 

@@ -10,14 +10,14 @@ mod and as the first consumer used to pressure-test the package's API — see
 
 | Layer | Files | Talks to |
 | --- | --- | --- |
-| Engine glue | `Plugin.cs`, `Ror2/RunTracker.cs`, `Ror2/StateExtractor.cs` | RoR2 / Unity / BepInEx |
+| Engine glue | `Plugin.cs`, `Ror2/RunTracker.cs`, `Ror2/StateExtractor.cs`, `Ror2/AchievementPatch.cs` | RoR2 / Unity / BepInEx |
 | Mapping (engine-free) | `Mapping/RunSnapshot.cs`, `Mapping/PlayRecordMapper.cs` | the package only |
-| Adapters / config | `Adapters/BepInExLogSink.cs`, `Config/Ror2PlayConfig.cs` | both |
+| Adapters / config | `Adapters/BepInExLogSink.cs`, `Config/Ror2PlayConfig.cs`, `Config/BepInExConfigStore.cs` | both |
 
 The mapping layer references no RoR2 type, so it builds and is reasoned about
 against the package alone (that's how the API gaps were found).
 
-**Flow:** `Plugin.Awake` wires the three adapters, loads `config.json`, constructs
+**Flow:** `Plugin.Awake` wires the three adapters, reads the BepInEx config, constructs
 `AtprotoGamingClient`, and starts `LoginAsync` on a background task. `RunTracker`
 opens a `PlaySession` on `Run.onRunStartGlobal`, flips a dirty bit on game events,
 and a coroutine emits a throttled snapshot (one record update per ~60 s, plus an
@@ -25,9 +25,10 @@ immediate write at game-over). Everything offline-queues automatically.
 
 ## Building
 
-Needs a local RoR2 install with **BepInEx 5** and **HookGenPatcher** (for
-`MMHOOK_RoR2.dll`). The `.csproj` auto-detects the Steam install per-OS; override
-in `mod/local.props` if yours is elsewhere:
+Needs a local RoR2 install with **BepInEx 5** (the only dependency — the one game
+patch uses Harmony, which ships inside BepInEx; no HookGenPatcher/MMHOOK). The
+`.csproj` auto-detects the Steam install per-OS; override in `mod/local.props` if
+yours is elsewhere:
 
 ```xml
 <Project><PropertyGroup>
@@ -49,10 +50,13 @@ et al.) next to it.
 
 ## Configuring
 
-First launch writes `config.json` next to the DLL and logs a "not configured"
-banner. Set `handle` + `appPassword` ([app password](https://bsky.app/settings/app-passwords)),
-restart. Optional: `game` (the catalogue AT URI), `source` (`steam`/`epic`),
-`throttleSeconds`.
+Settings live in BepInEx's config (`BepInEx/config/me.byjp.pesos.ror2.play.cfg`,
+editable in a mod manager's config editor) — see the
+[install guide](../README.md#configure). Set `[Login]` `Handle` + `AppPassword`
+([app password](https://bsky.app/settings/app-passwords)) and restart; until then the
+mod loads but publishes nothing (it logs a one-line notice). Optional: `[Recording]`
+`Source` (`steam`/`epic`/…) and `ThrottleSeconds`. The `[Cache]` section is
+mod-managed. (The offline outbox still lives in `outbox/` next to the DLL.)
 
 ## Signing (optional)
 
