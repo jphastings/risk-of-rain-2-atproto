@@ -24,6 +24,7 @@ namespace ByJP.Ror2.Play.Mapping
         private readonly string _game;
         private readonly string _source;
         private bool _settingsEmitted;
+        private bool _characterEmitted;
 
         public PlayRecordMapper(AtprotoGamingClient client, PlaySession play, string game, string source)
         {
@@ -43,7 +44,6 @@ namespace ByJP.Ror2.Play.Mapping
                 tx.SetSetting("seed", snap.Seed);
                 tx.SetSetting("mode", snap.Mode);
                 if (snap.Difficulty is int difficulty) tx.SetSetting("difficulty", difficulty);
-                if (!string.IsNullOrEmpty(snap.Character)) tx.SetSetting("character", snap.Character!);
                 if (snap.Artifacts.Count > 0)
                 {
                     var artifacts = new JsonArray();
@@ -53,11 +53,22 @@ namespace ByJP.Ror2.Play.Mapping
                 _settingsEmitted = true;
             }
 
+            // "character" = who you started as. The body isn't spawned on the very first
+            // snapshot, so emit it once it's first known (not gated on _settingsEmitted).
+            if (!_characterEmitted && !string.IsNullOrEmpty(snap.Character))
+            {
+                tx.SetSetting("character", snap.Character!);
+                _characterEmitted = true;
+            }
+
             // RoR2's StatSheet is authoritative and absolute, so set values directly.
             tx.SetProgress("stopwatch", snap.StopwatchSeconds);
             tx.SetProgress("stageClearCount", snap.StageClearCount);
             if (snap.CurrentHp is int hp) tx.SetProgress("hp", hp);
             if (snap.CurrentLevel is int level) tx.SetProgress("level", level);
+            // current body (raw "<Survivor>Body", matching the per-body stat keys) —
+            // distinct from settings.character once bodies change mid-run.
+            if (!string.IsNullOrEmpty(snap.Character)) tx.SetProgress("character", snap.Character!);
             foreach (var stat in snap.Stats)
                 tx.SetProgress(stat.Key, stat.Value);
             foreach (var map in snap.StatMaps)

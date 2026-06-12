@@ -152,18 +152,22 @@ namespace ByJP.Ror2.Play.Ror2
 
         private static void CaptureAllies(RunSnapshot snap)
         {
-            var localMaster = LocalUserManager.GetFirstLocalUser()?.cachedMaster;
             foreach (var controller in PlayerCharacterMasterController.instances)
             {
-                if (controller == null || controller.master == localMaster) continue;
+                if (controller == null) continue;
                 var networkUser = controller.networkUser;
                 if (networkUser == null) continue;
 
+                // playingWith is *other* players only — skip the local player(s). (cachedMaster
+                // is unreliable at game-over, so key off the network's local-players list.)
+                if (NetworkUser.readOnlyLocalPlayersList.Contains(networkUser)) continue;
+
                 // Only steam-backed users have a SteamID64 we can resolve to a DID;
-                // EGS/EOS users have no steam id, so skip them.
+                // EGS/EOS users have no steam id, so skip them. PlatformID.ID is the raw
+                // SteamID64 (decimal) — ToSteamID() would give the legacy STEAM_x:y:z form.
                 var steamId = networkUser.id.steamId;
                 if (!steamId.isSteam) continue;
-                snap.Allies.Add(new Ally { Steam = steamId.ToSteamID() });
+                snap.Allies.Add(new Ally { Steam = steamId.ID.ToString() });
             }
         }
     }
