@@ -25,17 +25,18 @@ package, so the same plumbing can power mods for other games.
 
 You need an atproto account (e.g. [Bluesky](https://bsky.app), [Eurosky](https://eurosky.social), [Blacksky](https://blacksky.app)) and an **app password** — *not* your main password. Create one at **<https://bsky.app/settings/app-passwords>**.
 
-- Install the mod (as above), and start the game at least once
+The mod ships its config, so you can set this up **before you ever launch**:
+
 - **In the mod manager:** open the **Config editor** and pick
   `atproto-play-tracking.cfg`. It's a plain **text** file (not a form) — under the
   `[Login]` section, edit the lines to read `Handle = you.bsky.social` and
-  `AppPassword = xxxx-xxxx-xxxx-xxxx` (no quotes). *The file only appears after the
-  modded game has been launched once — BepInEx writes it on first run.*
+  `AppPassword = xxxx-xxxx-xxxx-xxxx` (no quotes).
 - **Manual:** the same file is at
   `Risk of Rain 2/BepInEx/config/atproto-play-tracking.cfg`.
 
-After saving, the read-only `Status` line under `[Login]` shows `✓ signed in as …` or
-`✗ rejected: …` on the next launch, so you know the credentials took.
+The in-game **`@` badge** (top-right of the main menu) shows whether you're connected —
+green when signed in, struck-through when not; click it for details. The read-only
+`Status` line in the config says the same (`✓ signed in as …` / `✗ rejected: …`).
 
 Then **restart the game**. Until credentials are set the mod loads but publishes
 nothing (it logs a one-line "publishing is OFF" notice).

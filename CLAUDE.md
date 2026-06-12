@@ -116,10 +116,13 @@ bundled; no HookGenPatcher).
 Modelled on the sibling sts2.at release workflow. Triggers on a push to `main` that
 changes `mod/ByJP.Ror2.Play.csproj` (i.e. a `<Version>` bump), skips if the `v<version>`
 tag already exists, else: builds with `-p:UseGameLibs=true` (core restores from nuget.org,
-GameLibs from the BepInEx feed — no game install, no sibling-repo checkout), zips a
-`AtprotoPlayTracking/` folder (plugin + deps + manifest + README), and `gh release create`s it.
-Players download that zip from GitHub Releases (see the root README) or install via a mod
-manager. Optional record-signing key is read from the `MOD_SIGNING_PRIVATE_KEY` secret.
+GameLibs from the BepInEx feed — no game install, no sibling-repo checkout), and zips a
+**Thunderstore-layout** package (manifest [version stamped from `__VERSION__`] + icon +
+README + DLLs at root, plus `config/atproto-play-tracking.cfg` → installs to
+`BepInEx/config` so the `.cfg` exists before first launch). That same layout is what
+r2modman imports. `gh release create`s the zip; players install via a mod manager (or
+extract). Optional record-signing key is read from the `MOD_SIGNING_PRIVATE_KEY` secret.
+The shipped `config/*.cfg` must stay in sync with `BepInExConfigStore`'s `Bind` keys.
 
 After the GitHub Release it optionally publishes to **Thunderstore** (`riskofrain2`
 community) via `GreenTF/upload-thunderstore-package` — **inert unless** the

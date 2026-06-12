@@ -48,15 +48,18 @@ jobs:
           dotnet build mod/ByJP.Ror2.Play.csproj -c Release -p:UseGameLibs=true \
             /p:SigningPrivateKey="${{ secrets.MOD_SIGNING_PRIVATE_KEY }}"
 
-      - name: Stage the release zip
+      # Thunderstore-layout package (manifest/icon/README + DLLs at root, config/ →
+      # BepInEx/config so the .cfg exists before first launch). Importable in r2modman.
+      - name: Build the package zip
         if: steps.check.outputs.skip != 'true'
         run: |
-          stage="release/AtprotoPlayTracking"
-          mkdir -p "$stage"
-          cp mod/bin/Release/*.dll "$stage/"
-          sed "s/__VERSION__/${{ steps.ver.outputs.version }}/" mod/manifest.json > "$stage/manifest.json"
-          cp README.md             "$stage/"
-          ( cd release && zip -r "Atproto_Play_Tracking_${{ steps.ver.outputs.version }}.zip" AtprotoPlayTracking )
+          pkg="release/pkg"
+          mkdir -p "$pkg/config"
+          cp mod/bin/Release/*.dll "$pkg/"
+          sed "s/__VERSION__/${{ steps.ver.outputs.version }}/" mod/manifest.json > "$pkg/manifest.json"
+          cp icon.png README.md "$pkg/"
+          cp mod/Config/atproto-play-tracking.cfg "$pkg/config/"
+          ( cd "$pkg" && zip -r "../Atproto_Play_Tracking_${{ steps.ver.outputs.version }}.zip" . )
 
       - name: Create the release
         if: steps.check.outputs.skip != 'true'
@@ -75,8 +78,9 @@ jobs:
       - name: Stage the Thunderstore package files
         if: steps.check.outputs.skip != 'true' && vars.THUNDERSTORE_TEAM != ''
         run: |
-          mkdir -p tspkg
+          mkdir -p tspkg/config
           cp mod/bin/Release/*.dll tspkg/
+          cp mod/Config/atproto-play-tracking.cfg tspkg/config/
 
       - name: Publish to Thunderstore
         if: steps.check.outputs.skip != 'true' && vars.THUNDERSTORE_TEAM != ''
