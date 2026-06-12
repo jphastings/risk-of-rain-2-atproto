@@ -1,28 +1,28 @@
 using System;
+using System.IO;
+using System.Text.Json;
 using BepInEx.Configuration;
 using ByJP.AtprotoGaming.Core;
+using ByJP.AtprotoGaming.Core.Adapters;
 
 namespace ByJP.Ror2.Play.Config
 {
     /// <summary>
-    /// Backs the package's <see cref="IConfigStore"/> with BepInEx's config system, so
-    /// the player edits their atproto handle + app password in the mod manager's config
-    /// editor (or the <c>BepInEx/config/*.cfg</c>) — no hand-edited JSON. Credentials
-    /// live under <c>[Login]</c>; the identity/stats cache the package writes back lives
-    /// under <c>[Cache]</c> (auto-managed). One file, no duplicated secret.
+    /// Backs the package's <see cref="IConfigStore"/> with BepInEx's config system. The
+    /// player-facing <c>.cfg</c> holds only what they edit — handle + app password under
+    /// <c>[Login]</c>, recording prefs under <c>[Recording]</c>. The auto-managed identity
+    /// /stats cache the package writes back is kept in a sidecar JSON next to the outbox,
+    /// NOT in the <c>.cfg</c>, so it doesn't clutter the mod manager's config editor.
     /// </summary>
     internal sealed class BepInExConfigStore : IConfigStore
     {
         private readonly Ror2PlayConfig _config = new Ror2PlayConfig();
+        private readonly string _cachePath;
 
         private readonly ConfigEntry<string> _handle;
         private readonly ConfigEntry<string> _appPassword;
         private readonly ConfigEntry<string> _source;
         private readonly ConfigEntry<int> _throttleSeconds;
-        private readonly ConfigEntry<string> _cachedHandle;
-        private readonly ConfigEntry<string> _cachedDid;
-        private readonly ConfigEntry<string> _cachedPds;
-        private readonly ConfigEntry<string> _statsRkey;
         private readonly ConfigEntry<string> _status;
 
         /// <summary>
@@ -32,7 +32,7 @@ namespace ByJP.Ror2.Play.Config
         /// </summary>
         public event Action? CredentialsChanged;
 
-        public BepInExConfigStore(ConfigFile file)
+        public BepInExConfigStore(ConfigFile file, IFileSystem fs)
         {
             _handle = file.Bind("Login", "Handle", "",
                 "Your atproto handle, e.g. you.bsky.social (or a did:plc:…). Leave blank to disable publishing.");
@@ -46,20 +46,14 @@ namespace ByJP.Ror2.Play.Config
             _throttleSeconds = file.Bind("Recording", "ThrottleSeconds", 60,
                 "Minimum seconds between in-progress record updates while playing (game-over always writes immediately).");
 
-            _cachedHandle = file.Bind("Cache", "CachedHandle", "", "Managed automatically — do not edit.");
-            _cachedDid = file.Bind("Cache", "CachedDid", "", "Managed automatically — do not edit.");
-            _cachedPds = file.Bind("Cache", "CachedPds", "", "Managed automatically — do not edit.");
-            _statsRkey = file.Bind("Cache", "StatsRkey", "", "Managed automatically — do not edit.");
-
             _config.Handle = _handle.Value;
             _config.AppPassword = _appPassword.Value;
             _config.Source = _source.Value;
             _config.ThrottleSeconds = _throttleSeconds.Value;
-            _config.CachedHandle = _cachedHandle.Value;
-            _config.CachedDid = _cachedDid.Value;
-            _config.CachedPds = _cachedPds.Value;
-            _config.StatsRkey = _statsRkey.Value;
             // Game stays at the Ror2PlayConfig default — internal, not player-editable.
+
+            _cachePath = Path.Combine(fs.OutboxRoot, "identity-cache.json");
+            LoadCache();
 
             _handle.SettingChanged += OnCredentialChanged;
             _appPassword.SettingChanged += OnCredentialChanged;
@@ -83,14 +77,45 @@ namespace ByJP.Ror2.Play.Config
             CredentialsChanged?.Invoke();
         }
 
+        // The resolved identity + stats rkey the package writes back via Save(), persisted
+        // beside the outbox so an offline boot and later runs reuse them. Not in the .cfg.
+        private sealed class CacheState
+        {
+            public string CachedHandle { get; set; } = "";
+            public string CachedDid { get; set; } = "";
+            public string CachedPds { get; set; } = "";
+            public string StatsRkey { get; set; } = "";
+        }
+
+        private void LoadCache()
+        {
+            try
+            {
+                if (!File.Exists(_cachePath)) return;
+                var c = JsonSerializer.Deserialize<CacheState>(File.ReadAllText(_cachePath));
+                if (c == null) return;
+                _config.CachedHandle = c.CachedHandle;
+                _config.CachedDid = c.CachedDid;
+                _config.CachedPds = c.CachedPds;
+                _config.StatsRkey = c.StatsRkey;
+            }
+            catch { /* a missing/corrupt cache just re-resolves on next login */ }
+        }
+
         public void Save()
         {
-            // Only the cache fields change at runtime; persist them so an offline boot
-            // and later runs reuse the resolved identity and the same stats record.
-            _cachedHandle.Value = _config.CachedHandle;
-            _cachedDid.Value = _config.CachedDid;
-            _cachedPds.Value = _config.CachedPds;
-            _statsRkey.Value = _config.StatsRkey;
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(_cachePath)!);
+                File.WriteAllText(_cachePath, JsonSerializer.Serialize(new CacheState
+                {
+                    CachedHandle = _config.CachedHandle,
+                    CachedDid = _config.CachedDid,
+                    CachedPds = _config.CachedPds,
+                    StatsRkey = _config.StatsRkey,
+                }));
+            }
+            catch { /* non-fatal: the cache is an optimization, not correctness */ }
         }
     }
 }

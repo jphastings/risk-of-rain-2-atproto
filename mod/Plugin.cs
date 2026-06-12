@@ -39,7 +39,7 @@ namespace ByJP.Ror2.Play
             // Credentials + cache live in the BepInEx config (.cfg, editable in the mod
             // manager); the offline outbox/ still lives next to this DLL.
             var fs = FileSystem.NextTo<Plugin>();
-            var config = new BepInExConfigStore(Config);
+            var config = new BepInExConfigStore(Config, fs);
 
             if (!config.HasCredentials)
                 Logger.LogWarning(
