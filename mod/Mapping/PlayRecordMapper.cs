@@ -24,6 +24,7 @@ namespace ByJP.Ror2.Play.Mapping
         private readonly string _game;
         private readonly string _source;
         private bool _settingsEmitted;
+        private bool _characterEmitted;
 
         public PlayRecordMapper(AtprotoGamingClient client, PlaySession play, string game, string source)
         {
@@ -43,7 +44,6 @@ namespace ByJP.Ror2.Play.Mapping
                 tx.SetSetting("seed", snap.Seed);
                 tx.SetSetting("mode", snap.Mode);
                 if (snap.Difficulty is int difficulty) tx.SetSetting("difficulty", difficulty);
-                if (!string.IsNullOrEmpty(snap.Character)) tx.SetSetting("character", snap.Character!);
                 if (snap.Artifacts.Count > 0)
                 {
                     var artifacts = new JsonArray();
@@ -53,11 +53,21 @@ namespace ByJP.Ror2.Play.Mapping
                 _settingsEmitted = true;
             }
 
+            // "character" = who you started as. The body isn't spawned on the very first
+            // snapshot, so emit it once it's first known (not gated on _settingsEmitted).
+            if (!_characterEmitted && !string.IsNullOrEmpty(snap.Character))
+            {
+                tx.SetSetting("character", CleanBodyName(snap.Character!));
+                _characterEmitted = true;
+            }
+
             // RoR2's StatSheet is authoritative and absolute, so set values directly.
             tx.SetProgress("stopwatch", snap.StopwatchSeconds);
             tx.SetProgress("stageClearCount", snap.StageClearCount);
             if (snap.CurrentHp is int hp) tx.SetProgress("hp", hp);
             if (snap.CurrentLevel is int level) tx.SetProgress("level", level);
+            // current body — distinct from settings.character once bodies change mid-run.
+            if (!string.IsNullOrEmpty(snap.Character)) tx.SetProgress("character", CleanBodyName(snap.Character!));
             foreach (var stat in snap.Stats)
                 tx.SetProgress(stat.Key, stat.Value);
             foreach (var map in snap.StatMaps)
@@ -149,6 +159,13 @@ namespace ByJP.Ror2.Play.Mapping
             foreach (var kv in map) node[kv.Key] = kv.Value;
             return node;
         }
+
+        // RoR2 body prefab names are "<Survivor>Body" (HuntressBody → Huntress). Per-body
+        // stat keys keep the raw name; the friendly name reads better as the character.
+        private static string CleanBodyName(string bodyName) =>
+            bodyName.EndsWith("Body", StringComparison.Ordinal)
+                ? bodyName.Substring(0, bodyName.Length - 4)
+                : bodyName;
 
         private static string OutcomeType(RunOutcome outcome)
         {
