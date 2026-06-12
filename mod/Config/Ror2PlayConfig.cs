@@ -10,12 +10,12 @@ namespace ByJP.Ror2.Play.Config
     internal sealed class Ror2PlayConfig : CoreConfig
     {
         /// <summary>
-        /// AT URI of the RoR2 game record in the games.gamesgamesgamesgames
-        /// catalogue. Placeholder until a real one is registered with Birbhouse.
+        /// AT URI of the registered RoR2 game record in the games.gamesgamesgamesgames
+        /// catalogue (the rkey is a TID, not the "ror2" slug).
         /// </summary>
         [JsonPropertyName("game")]
         public string Game { get; set; } =
-            "at://did:web:gamesgamesgamesgames.games/games.gamesgamesgamesgames.game/ror2";
+            "at://did:web:gamesgamesgamesgames.games/games.gamesgamesgamesgames.game/3mghhtroxpn2d";
 
         /// <summary>Platform this install runs on (see <see cref="StatsSource"/>).</summary>
         [JsonPropertyName("source")]

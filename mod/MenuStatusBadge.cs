@@ -70,6 +70,14 @@ namespace ByJP.Ror2.Play
         {
             Stretch((RectTransform)transform);
 
+            // Own nested canvas so the badge sorts + raycasts above the menu's canvases —
+            // it rendered fine, but the menu's UI was intercepting the clicks. Empty areas
+            // aren't raycast targets, so this doesn't block the menu behind it.
+            var canvas = gameObject.AddComponent<Canvas>();
+            canvas.overrideSorting = true;
+            canvas.sortingOrder = 30000;
+            gameObject.AddComponent<GraphicRaycaster>();
+
             _content = NewUi("Content", transform);
             var crt = (RectTransform)_content.transform;
             crt.anchorMin = crt.anchorMax = crt.pivot = new Vector2(1f, 1f); // top-right
