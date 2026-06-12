@@ -10,7 +10,7 @@
     <RootNamespace>ByJP.Ror2.Play</RootNamespace>
     <!-- ▸▸ THE ONE PLACE TO BUMP THE VERSION ◂◂ — the plugin constant and the
          packaged manifest.json are both derived from this, so they can't drift. -->
-    <Version>0.1.4</Version>
+    <Version>0.1.5</Version>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
@@ -58,9 +58,10 @@
     <Reference Include="RoR2"><HintPath>$(Managed)/RoR2.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="UnityEngine"><HintPath>$(Managed)/UnityEngine.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="UnityEngine.CoreModule"><HintPath>$(Managed)/UnityEngine.CoreModule.dll</HintPath><Private>false</Private></Reference>
-    <!-- IMGUI (GUI/OnGUI) + TextAnchor/FontStyle for the status overlay. -->
-    <Reference Include="UnityEngine.IMGUIModule"><HintPath>$(Managed)/UnityEngine.IMGUIModule.dll</HintPath><Private>false</Private></Reference>
-    <Reference Include="UnityEngine.TextRenderingModule"><HintPath>$(Managed)/UnityEngine.TextRenderingModule.dll</HintPath><Private>false</Private></Reference>
+    <!-- uGUI + TextMeshPro for the native main-menu status badge. -->
+    <Reference Include="UnityEngine.UIModule"><HintPath>$(Managed)/UnityEngine.UIModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.UI"><HintPath>$(Managed)/UnityEngine.UI.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Unity.TextMeshPro"><HintPath>$(Managed)/Unity.TextMeshPro.dll</HintPath><Private>false</Private></Reference>
     <!-- RoR2's Run/Stage/CharacterMaster etc. derive from UNet's NetworkBehaviour. -->
     <Reference Include="com.unity.multiplayer-hlapi.Runtime"><HintPath>$(Managed)/com.unity.multiplayer-hlapi.Runtime.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="BepInEx"><HintPath>$(BepInExCore)/BepInEx.dll</HintPath><Private>false</Private></Reference>

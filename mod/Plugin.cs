@@ -76,11 +76,9 @@ namespace ByJP.Ror2.Play
             _tracker.Hook();
             StartCoroutine(_tracker.EmitLoop());
 
-            // Always-on "@" status badge (top-right) so you can see at a glance whether
-            // atproto is connected — and why not, if it isn't.
-            var overlay = new GameObject("AtprotoStatusOverlay");
-            DontDestroyOnLoad(overlay);
-            overlay.AddComponent<StatusOverlay>().Init(_client.Auth, PluginInfo.Version);
+            // Native "@" status badge on the main menu — at-a-glance connection state,
+            // click to expand who's signed in / what's wrong + the version.
+            MenuStatusBadge.Install(_client.Auth, PluginInfo.Version);
 
             Logger.LogInfo($"{PluginInfo.Name} {PluginInfo.Version} loaded");
         }
