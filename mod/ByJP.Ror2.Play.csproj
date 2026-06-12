@@ -10,7 +10,7 @@
     <RootNamespace>ByJP.Ror2.Play</RootNamespace>
     <!-- ▸▸ THE ONE PLACE TO BUMP THE VERSION ◂◂ — the plugin constant and the
          packaged manifest.json are both derived from this, so they can't drift. -->
-    <Version>0.1.5</Version>
+    <Version>0.1.6</Version>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
