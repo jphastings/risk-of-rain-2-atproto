@@ -121,6 +121,15 @@ GameLibs from the BepInEx feed — no game install, no sibling-repo checkout), z
 Players download that zip from GitHub Releases (see the root README) or install via a mod
 manager. Optional record-signing key is read from the `MOD_SIGNING_PRIVATE_KEY` secret.
 
+After the GitHub Release it optionally publishes to **Thunderstore** (`riskofrain2`
+community) via `GreenTF/upload-thunderstore-package` — **inert unless** the
+`THUNDERSTORE_TEAM` variable + `THUNDERSTORE_TOKEN` secret are set (guarded by
+`vars.THUNDERSTORE_TEAM != ''`). The action builds the Thunderstore manifest from workflow
+inputs + the repo-root `icon.png` (256×256 — currently a placeholder) + root `README.md`;
+the BepInEx dep is `bbepis-BepInExPack` (also pinned in `mod/manifest.json` for the
+GitHub-zip / r2modman local-import path). The first Thunderstore publish is unverified
+(can't dry-run the upload) — watch it and confirm the package installs + the plugin loads.
+
 ## Key design facts
 - Writes the **shared** `actor.play` record (not the old bespoke `me.byjp.pesos.ror2.run`).
 - rkey = `DerivePlayID(startTimeUtc, seed)` — same on every multiplayer peer.

@@ -14,54 +14,28 @@ package, so the same plumbing can power mods for other games.
 
 ## Install
 
-> The mod's only dependency is **BepInEx 5**. A mod manager installs that for you, so
-> the manager route below is by far the easiest.
-
-### Option A — a mod manager (recommended)
-
-1. Install **[r2modman](https://thunderstore.io/package/ebkr/r2modman/)** or the
-   **Thunderstore Mod Manager** (Overwolf).
+1. Install **[r2modman](https://thunderstore.io/package/ebkr/r2modman/)** or the **Thunderstore Mod Manager** (Overwolf).
 2. Pick **Risk of Rain 2**, search for **ByJP atproto Play**, and click **Install**.
-   BepInEx is pulled in automatically as a dependency.
 3. [Configure your handle + app password](#configure).
 4. Launch the game **through the mod manager**.
-
-### Option B — manual (from GitHub Releases)
-
-1. Install **BepInEx 5** if you don't have it — the
-   [BepInExPack](https://thunderstore.io/package/bbepis/BepInExPack/) (unzip into your
-   game folder so `winhttp.dll` sits next to `Risk of Rain 2.exe`).
-2. Download the latest **`ByJP_Ror2_atproto_Play_x.y.z.zip`** from the
-   [**Releases page**](https://github.com/jphastings/risk-of-rain-2-atproto/releases/latest).
-3. Unzip it into `Risk of Rain 2/BepInEx/plugins/` — the zip contains a
-   `ByJP.Ror2.Play/` folder with the plugin, its dependencies, and `manifest.json`.
-4. [Configure your handle + app password](#configure).
-5. Launch the game once.
-
-### Steam Deck / Linux (Proton)
-
-RoR2 is a Windows build, so BepInEx loads under Proton via a `winhttp.dll` proxy. Add
-this **Steam launch option** (right-click the game → Properties → Launch Options):
-
-```
-WINEDLLOVERRIDES="winhttp=n,b" %command%
-```
-
-A mod manager sets this for you; it's the single most-forgotten step on the Deck.
 
 ---
 
 ## Configure
 
-You need an atproto account (e.g. [Bluesky](https://bsky.app)) and an **app
-password** — *not* your main password. Create one at
-**<https://bsky.app/settings/app-passwords>**.
+You need an atproto account (e.g. [Bluesky](https://bsky.app), [Eurosky](https://eurosky.social), [Blacksky](https://blacksky.app)) and an **app password** — *not* your main password. Create one at **<https://bsky.app/settings/app-passwords>**.
 
-- **Via a mod manager:** open the mod's **Config / Settings editor**, and under
-  **`[Login]`** set **`Handle`** (e.g. `you.bsky.social`) and **`AppPassword`**.
-- **Manual:** edit
-  `Risk of Rain 2/BepInEx/config/me.byjp.pesos.ror2.play.cfg` and set the same two
-  values under `[Login]`.
+- Install the mod (as above), and start the game at least once
+- **In the mod manager:** open the **Config editor** and pick
+  `me.byjp.pesos.ror2.play.cfg`. It's a plain **text** file (not a form) — under the
+  `[Login]` section, edit the lines to read `Handle = you.bsky.social` and
+  `AppPassword = xxxx-xxxx-xxxx-xxxx` (no quotes). *The file only appears after the
+  modded game has been launched once — BepInEx writes it on first run.*
+- **Manual:** the same file is at
+  `Risk of Rain 2/BepInEx/config/me.byjp.pesos.ror2.play.cfg`.
+
+After saving, the read-only `Status` line under `[Login]` shows `✓ signed in as …` or
+`✗ rejected: …` on the next launch, so you know the credentials took.
 
 Then **restart the game**. Until credentials are set the mod loads but publishes
 nothing (it logs a one-line "publishing is OFF" notice).

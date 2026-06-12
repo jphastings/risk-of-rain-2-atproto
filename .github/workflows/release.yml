@@ -68,3 +68,27 @@ jobs:
             --title "ByJP RoR2 atproto Play ${{ steps.ver.outputs.tag }}" \
             --generate-notes \
             "release/ByJP_Ror2_atproto_Play_${{ steps.ver.outputs.version }}.zip"
+
+      # --- Thunderstore (optional). Inert until you set the THUNDERSTORE_TEAM variable
+      #     and the THUNDERSTORE_TOKEN secret; swap icon.png for real 256x256 art. The
+      #     action builds the manifest from these inputs + root icon.png + root README.md. ---
+      - name: Stage the Thunderstore package files
+        if: steps.check.outputs.skip != 'true' && vars.THUNDERSTORE_TEAM != ''
+        run: |
+          mkdir -p tspkg
+          cp mod/bin/Release/*.dll tspkg/
+
+      - name: Publish to Thunderstore
+        if: steps.check.outputs.skip != 'true' && vars.THUNDERSTORE_TEAM != ''
+        uses: GreenTF/upload-thunderstore-package@aef20d7e07a0858d0decae64872aa5526662ab8d # v4.3
+        with:
+          namespace: ${{ vars.THUNDERSTORE_TEAM }}
+          community: riskofrain2
+          name: ByJP_Ror2_atproto_Play
+          description: Publishes your Risk of Rain 2 runs to your atproto PDS as games.gamesgamesgamesgames.actor.play records.
+          version: ${{ steps.ver.outputs.version }}
+          repo: thunderstore.io
+          path: tspkg
+          deps: bbepis-BepInExPack@5.4.2121
+          website: https://github.com/jphastings/risk-of-rain-2-atproto
+          token: ${{ secrets.THUNDERSTORE_TOKEN }}
