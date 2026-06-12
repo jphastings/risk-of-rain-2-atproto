@@ -8,7 +8,9 @@
     <TargetFramework>net472</TargetFramework>
     <AssemblyName>ByJP.Ror2.Play</AssemblyName>
     <RootNamespace>ByJP.Ror2.Play</RootNamespace>
-    <Version>0.1.1</Version>
+    <!-- ▸▸ THE ONE PLACE TO BUMP THE VERSION ◂◂ — the plugin constant and the
+         packaged manifest.json are both derived from this, so they can't drift. -->
+    <Version>0.1.2</Version>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
@@ -70,9 +72,17 @@
     <PackageReference Include="BepInEx.Core" Version="5.4.21" IncludeAssets="compile" PrivateAssets="all" />
   </ItemGroup>
 
-  <ItemGroup>
-    <None Include="manifest.json" CopyToOutputDirectory="PreserveNewest" />
-  </ItemGroup>
+  <!-- Generate the BepInEx plugin's version constant from the project version (a
+       [BepInPlugin] attribute needs a compile-time const, so we can't just read the
+       assembly version). PluginInfo is declared `partial` in Plugin.cs. -->
+  <Target Name="GeneratePluginVersion" BeforeTargets="CoreCompile">
+    <MakeDir Directories="$(IntermediateOutputPath)" />
+    <WriteLinesToFile File="$(IntermediateOutputPath)PluginVersion.g.cs" Overwrite="true"
+      Lines="namespace ByJP.Ror2.Play { internal static partial class PluginInfo { public const string Version = &quot;$(Version)&quot;%3B } }" />
+    <ItemGroup>
+      <Compile Include="$(IntermediateOutputPath)PluginVersion.g.cs" />
+    </ItemGroup>
+  </Target>
 
   <!-- Embed a P-256 signing key when CI supplies one:
        dotnet build /p:SigningPrivateKey=did:key:z... → signed records. -->
@@ -96,18 +106,18 @@
     <Error Text="RoR2.dll not found at '$(Managed)'. Set Ror2Dir in mod/local.props to your game install, or build with -p:UseGameLibs=true to use the NuGet game libs." />
   </Target>
 
-  <!-- `dotnet build -t:Install` deploys the plugin + its managed deps. -->
+  <!-- `dotnet build -t:Install` deploys the plugin + its managed deps for local testing.
+       (No manifest.json — BepInEx doesn't need it; it's only for the Thunderstore/zip.) -->
   <Target Name="Install" DependsOnTargets="Build">
     <PropertyGroup>
-      <DeployDir>$(BepInExPlugins)/ByJP.Ror2.Play</DeployDir>
+      <DeployDir>$(BepInExPlugins)/AtprotoPlayTracking</DeployDir>
     </PropertyGroup>
     <ItemGroup>
       <Deploy Include="$(TargetDir)/*.dll" />
-      <Deploy Include="manifest.json" />
     </ItemGroup>
     <MakeDir Directories="$(DeployDir)" />
     <Copy SourceFiles="@(Deploy)" DestinationFolder="$(DeployDir)" />
-    <Message Text="Installed ByJP.Ror2.Play to $(DeployDir)" Importance="high" />
+    <Message Text="Installed Atproto Play Tracking to $(DeployDir)" Importance="high" />
   </Target>
 
 </Project>

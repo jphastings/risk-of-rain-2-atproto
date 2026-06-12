@@ -11,11 +11,11 @@ using ByJP.Ror2.Play.Ror2;
 
 namespace ByJP.Ror2.Play
 {
-    internal static class PluginInfo
+    internal static partial class PluginInfo
     {
         public const string Guid = "atproto-play-tracking";
         public const string Name = "Atproto Play Tracking";
-        public const string Version = "0.1.1";
+        // Version is generated from <Version> in the .csproj — see GeneratePluginVersion.
 
         // Set by CI when an embedded signing key is provided (see the .csproj).
         public const string AttestationType = "atproto-play-tracking#attestation";

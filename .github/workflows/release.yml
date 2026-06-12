@@ -19,7 +19,7 @@ jobs:
       - name: Extract mod version
         id: ver
         run: |
-          version=$(grep -oP '<Version>\K[^<]+' mod/ByJP.Ror2.Play.csproj)
+          version=$(grep -oP '<Version>\K[0-9][^<]*' mod/ByJP.Ror2.Play.csproj | head -1)
           if [[ -z "$version" ]]; then echo "no <Version> in mod/ByJP.Ror2.Play.csproj" >&2; exit 1; fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "tag=v$version"    >> "$GITHUB_OUTPUT"
@@ -54,7 +54,7 @@ jobs:
           stage="release/AtprotoPlayTracking"
           mkdir -p "$stage"
           cp mod/bin/Release/*.dll "$stage/"
-          cp mod/manifest.json     "$stage/"
+          sed "s/__VERSION__/${{ steps.ver.outputs.version }}/" mod/manifest.json > "$stage/manifest.json"
           cp README.md             "$stage/"
           ( cd release && zip -r "Atproto_Play_Tracking_${{ steps.ver.outputs.version }}.zip" AtprotoPlayTracking )
 
