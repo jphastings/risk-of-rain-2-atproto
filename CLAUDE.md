@@ -117,7 +117,7 @@ Modelled on the sibling sts2.at release workflow. Triggers on a push to `main` t
 changes `mod/ByJP.Ror2.Play.csproj` (i.e. a `<Version>` bump), skips if the `v<version>`
 tag already exists, else: builds with `-p:UseGameLibs=true` (core restores from nuget.org,
 GameLibs from the BepInEx feed — no game install, no sibling-repo checkout), zips a
-`ByJP.Ror2.Play/` folder (plugin + deps + manifest + README), and `gh release create`s it.
+`AtprotoPlayTracking/` folder (plugin + deps + manifest + README), and `gh release create`s it.
 Players download that zip from GitHub Releases (see the root README) or install via a mod
 manager. Optional record-signing key is read from the `MOD_SIGNING_PRIVATE_KEY` secret.
 
@@ -131,7 +131,7 @@ GitHub-zip / r2modman local-import path). The first Thunderstore publish is unve
 (can't dry-run the upload) — watch it and confirm the package installs + the plugin loads.
 
 ## Key design facts
-- Writes the **shared** `actor.play` record (not the old bespoke `me.byjp.pesos.ror2.run`).
+- Writes the **shared** `actor.play` record (not a bespoke per-game run lexicon).
 - rkey = `DerivePlayID(startTimeUtc, seed)` — same on every multiplayer peer.
 - Mapper re-states full acquisitions (`SetAcquisitions`) + re-arrives/leaves every route
   stop each snapshot, keyed by ordinal `instanceId` → crash-safe, no per-emit bookkeeping.

@@ -13,12 +13,12 @@ namespace ByJP.Ror2.Play
 {
     internal static class PluginInfo
     {
-        public const string Guid = "me.byjp.pesos.ror2.play";
-        public const string Name = "ByJP RoR2 atproto Play";
+        public const string Guid = "atproto-play-tracking";
+        public const string Name = "Atproto Play Tracking";
         public const string Version = "0.1.0";
 
         // Set by CI when an embedded signing key is provided (see the .csproj).
-        public const string AttestationType = "me.byjp.pesos.ror2.play#attestation";
+        public const string AttestationType = "atproto-play-tracking#attestation";
     }
 
     /// <summary>
@@ -44,7 +44,7 @@ namespace ByJP.Ror2.Play
             if (!config.HasCredentials)
                 Logger.LogWarning(
                     "atproto publishing is OFF — set Handle and AppPassword in this mod's config " +
-                    "(BepInEx/config/me.byjp.pesos.ror2.play.cfg, or the mod manager's config editor).");
+                    "(BepInEx/config/atproto-play-tracking.cfg, or the mod manager's config editor).");
 
             _client = new AtprotoGamingClient(new AtprotoGamingOptions
             {

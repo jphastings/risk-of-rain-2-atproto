@@ -51,12 +51,12 @@ jobs:
       - name: Stage the release zip
         if: steps.check.outputs.skip != 'true'
         run: |
-          stage="release/ByJP.Ror2.Play"
+          stage="release/AtprotoPlayTracking"
           mkdir -p "$stage"
           cp mod/bin/Release/*.dll "$stage/"
           cp mod/manifest.json     "$stage/"
           cp README.md             "$stage/"
-          ( cd release && zip -r "ByJP_Ror2_atproto_Play_${{ steps.ver.outputs.version }}.zip" ByJP.Ror2.Play )
+          ( cd release && zip -r "Atproto_Play_Tracking_${{ steps.ver.outputs.version }}.zip" AtprotoPlayTracking )
 
       - name: Create the release
         if: steps.check.outputs.skip != 'true'
@@ -65,9 +65,9 @@ jobs:
         run: |
           gh release create "${{ steps.ver.outputs.tag }}" \
             --repo "${{ github.repository }}" \
-            --title "ByJP RoR2 atproto Play ${{ steps.ver.outputs.tag }}" \
+            --title "Atproto Play Tracking ${{ steps.ver.outputs.tag }}" \
             --generate-notes \
-            "release/ByJP_Ror2_atproto_Play_${{ steps.ver.outputs.version }}.zip"
+            "release/Atproto_Play_Tracking_${{ steps.ver.outputs.version }}.zip"
 
       # --- Thunderstore (optional). Inert until you set the THUNDERSTORE_TEAM variable
       #     and the THUNDERSTORE_TOKEN secret; swap icon.png for real 256x256 art. The
@@ -84,7 +84,7 @@ jobs:
         with:
           namespace: ${{ vars.THUNDERSTORE_TEAM }}
           community: riskofrain2
-          name: ByJP_Ror2_atproto_Play
+          name: Atproto_Play_Tracking
           description: Publishes your Risk of Rain 2 runs to your atproto PDS as games.gamesgamesgamesgames.actor.play records.
           version: ${{ steps.ver.outputs.version }}
           repo: thunderstore.io

@@ -15,7 +15,7 @@ package, so the same plumbing can power mods for other games.
 ## Install
 
 1. Install **[r2modman](https://thunderstore.io/package/ebkr/r2modman/)** or the **Thunderstore Mod Manager** (Overwolf).
-2. Pick **Risk of Rain 2**, search for **ByJP atproto Play**, and click **Install**.
+2. Pick **Risk of Rain 2**, search for **Atproto Play Tracking**, and click **Install**.
 3. [Configure your handle + app password](#configure).
 4. Launch the game **through the mod manager**.
 
@@ -27,12 +27,12 @@ You need an atproto account (e.g. [Bluesky](https://bsky.app), [Eurosky](https:/
 
 - Install the mod (as above), and start the game at least once
 - **In the mod manager:** open the **Config editor** and pick
-  `me.byjp.pesos.ror2.play.cfg`. It's a plain **text** file (not a form) — under the
+  `atproto-play-tracking.cfg`. It's a plain **text** file (not a form) — under the
   `[Login]` section, edit the lines to read `Handle = you.bsky.social` and
   `AppPassword = xxxx-xxxx-xxxx-xxxx` (no quotes). *The file only appears after the
   modded game has been launched once — BepInEx writes it on first run.*
 - **Manual:** the same file is at
-  `Risk of Rain 2/BepInEx/config/me.byjp.pesos.ror2.play.cfg`.
+  `Risk of Rain 2/BepInEx/config/atproto-play-tracking.cfg`.
 
 After saving, the read-only `Status` line under `[Login]` shows `✓ signed in as …` or
 `✗ rejected: …` on the next launch, so you know the credentials took.

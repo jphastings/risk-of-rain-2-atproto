@@ -55,7 +55,7 @@ et al.) next to it. To build against an **unreleased** core, `dotnet pack` it in
 
 ## Configuring
 
-Settings live in BepInEx's config (`BepInEx/config/me.byjp.pesos.ror2.play.cfg`,
+Settings live in BepInEx's config (`BepInEx/config/atproto-play-tracking.cfg`,
 editable in a mod manager's config editor) — see the
 [install guide](../README.md#configure). Set `[Login]` `Handle` + `AppPassword`
 ([app password](https://bsky.app/settings/app-passwords)) and restart; until then the
