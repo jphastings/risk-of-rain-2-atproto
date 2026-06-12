@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     branches: [main]
-    paths: ['mod/ByJP.Ror2.Play.csproj'] # release when the mod <Version> changes
+    paths: ["mod/ByJP.Ror2.Play.csproj"] # release when the mod <Version> changes
   workflow_dispatch:
 
 permissions:
@@ -38,7 +38,7 @@ jobs:
         if: steps.check.outputs.skip != 'true'
         uses: actions/setup-dotnet@9a946fdbd5fb07b82b2f5a4466058b876ab72bb2 # v5.3.0
         with:
-          dotnet-version: '9.0.x'
+          dotnet-version: "9.0.x"
 
       # ByJP.AtprotoGaming.Core restores from nuget.org; the publicised RoR2/Unity/BepInEx
       # come from the BepInEx feed via -p:UseGameLibs=true — no game install needed.
@@ -84,7 +84,7 @@ jobs:
         with:
           namespace: ${{ vars.THUNDERSTORE_TEAM }}
           community: riskofrain2
-          name: Atproto_Play_Tracking
+          name: Atproto Play Tracking
           description: Publishes your Risk of Rain 2 runs to your atproto PDS as games.gamesgamesgamesgames.actor.play records.
           version: ${{ steps.ver.outputs.version }}
           repo: thunderstore.io

@@ -15,7 +15,7 @@ namespace ByJP.Ror2.Play
     {
         public const string Guid = "atproto-play-tracking";
         public const string Name = "Atproto Play Tracking";
-        public const string Version = "0.1.0";
+        public const string Version = "0.1.1";
 
         // Set by CI when an embedded signing key is provided (see the .csproj).
         public const string AttestationType = "atproto-play-tracking#attestation";
