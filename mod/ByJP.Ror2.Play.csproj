@@ -23,7 +23,7 @@
   <!-- The engine-agnostic core. Until it's on nuget.org, pack it into a local
        feed (see nuget.config): dotnet pack ../../atproto-gaming-dotnet -o ../packages -->
   <ItemGroup>
-    <PackageReference Include="ByJP.AtprotoGaming.Core" Version="0.1.0" />
+    <PackageReference Include="ByJP.AtprotoGaming.Core" Version="0.1.1" />
   </ItemGroup>
 
   <!-- Auto-detect the RoR2 install per OS; override Ror2Dir in local.props if elsewhere. -->
