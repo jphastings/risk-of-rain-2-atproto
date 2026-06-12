@@ -14,10 +14,23 @@ package, so the same plumbing can power mods for other games.
 
 ## Install
 
-1. Install **[r2modman](https://thunderstore.io/package/ebkr/r2modman/)** or the **Thunderstore Mod Manager** (Overwolf).
-2. Pick **Risk of Rain 2**, search for **Atproto Play Tracking**, and click **Install**.
-3. [Configure your handle + app password](#configure).
-4. Launch the game **through the mod manager**.
+It's not on Thunderstore yet, so grab the release zip and install it manually — easiest
+with **r2modman**:
+
+1. Install **[r2modman](https://thunderstore.io/package/ebkr/r2modman/)** and create a
+   **Risk of Rain 2** profile.
+2. In the profile's **Online** tab, install **`BepInExPack`** (the BepInEx mod loader).
+   *A local import doesn't pull dependencies, so you must add this yourself.*
+3. Download the latest **`Atproto_Play_Tracking_x.y.z.zip`** from the
+   [**Releases page**](https://github.com/jphastings/risk-of-rain-2-atproto/releases/latest).
+4. In r2modman → **Settings → Import local mod** → pick that zip.
+5. [Configure your handle + app password](#configure).
+6. Launch with r2modman's **Start modded** (on Steam Deck, do this from Desktop Mode — it
+   sets up Proton for you).
+
+> Prefer no mod manager? Install **BepInEx 5** yourself, then from the zip copy the DLLs
+> into `Risk of Rain 2/BepInEx/plugins/AtprotoPlayTracking/` and
+> `config/atproto-play-tracking.cfg` into `Risk of Rain 2/BepInEx/config/`.
 
 ---
 

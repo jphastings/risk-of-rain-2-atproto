@@ -1,6 +1,7 @@
 # .NET build output
 bin/
 obj/
+dist/
 
 # Local-only build config + restored packages
 mod/local.props
