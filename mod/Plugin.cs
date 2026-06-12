@@ -3,6 +3,7 @@ using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
 using BepInEx;
+using UnityEngine;
 using ByJP.AtprotoGaming.Core;
 using ByJP.AtprotoGaming.Core.Adapters;
 using ByJP.Ror2.Play.Adapters;
@@ -74,6 +75,12 @@ namespace ByJP.Ror2.Play
             _tracker = new RunTracker(_client, config.Settings, Logger, PluginInfo.Version);
             _tracker.Hook();
             StartCoroutine(_tracker.EmitLoop());
+
+            // Always-on "@" status badge (top-right) so you can see at a glance whether
+            // atproto is connected — and why not, if it isn't.
+            var overlay = new GameObject("AtprotoStatusOverlay");
+            DontDestroyOnLoad(overlay);
+            overlay.AddComponent<StatusOverlay>().Init(_client.Auth, PluginInfo.Version);
 
             Logger.LogInfo($"{PluginInfo.Name} {PluginInfo.Version} loaded");
         }
