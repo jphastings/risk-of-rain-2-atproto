@@ -92,3 +92,7 @@ jobs:
           deps: bbepis-BepInExPack@5.4.2121
           website: https://github.com/jphastings/risk-of-rain-2-atproto
           token: ${{ secrets.THUNDERSTORE_TOKEN }}
+          categories: |
+            ai-generated
+            client-side
+            mods
