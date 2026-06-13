@@ -41,38 +41,33 @@ namespace ByJP.Ror2.Play.Mapping
 
             if (!_settingsEmitted)
             {
-                tx.SetSetting("seed", snap.Seed);
-                tx.SetSetting("mode", snap.Mode);
-                if (snap.Difficulty is int difficulty) tx.SetSetting("difficulty", difficulty);
-                if (snap.Artifacts.Count > 0)
-                {
-                    var artifacts = new JsonArray();
-                    foreach (var artifact in snap.Artifacts) artifacts.Add(artifact);
-                    tx.SetSetting("artifacts", artifacts);
-                }
+                tx.SetSetup(seed: snap.Seed, mode: snap.Mode, difficulty: snap.Difficulty);
+                // Artifacts are run-wide modifiers chosen at the start; deduped by id.
+                foreach (var artifact in snap.Artifacts) tx.AddModifier(artifact);
                 _settingsEmitted = true;
             }
 
-            // "character" = who you started as. The body isn't spawned on the very first
-            // snapshot, so emit it once it's first known (not gated on _settingsEmitted).
+            // setup.character = who you started as. The body isn't spawned on the very
+            // first snapshot, so fill it in once it's first known (SetSetup merges, so
+            // this doesn't clobber the seed/mode/difficulty set above).
             if (!_characterEmitted && !string.IsNullOrEmpty(snap.Character))
             {
-                tx.SetSetting("character", snap.Character!);
+                tx.SetSetup(character: snap.Character);
                 _characterEmitted = true;
             }
 
             // RoR2's StatSheet is authoritative and absolute, so set values directly.
-            tx.SetProgress("stopwatch", snap.StopwatchSeconds);
-            tx.SetProgress("stageClearCount", snap.StageClearCount);
-            if (snap.CurrentHp is int hp) tx.SetProgress("hp", hp);
-            if (snap.CurrentLevel is int level) tx.SetProgress("level", level);
+            tx.SetMetric("stopwatch", snap.StopwatchSeconds);
+            tx.SetMetric("stageClearCount", snap.StageClearCount);
+            if (snap.CurrentHp is int hp) tx.SetMetric("hp", hp);
+            if (snap.CurrentLevel is int level) tx.SetMetric("level", level);
             // current body (raw "<Survivor>Body", matching the per-body stat keys) —
-            // distinct from settings.character once bodies change mid-run.
-            if (!string.IsNullOrEmpty(snap.Character)) tx.SetProgress("character", snap.Character!);
+            // distinct from setup.character once bodies change mid-run.
+            if (!string.IsNullOrEmpty(snap.Character)) tx.SetSetting("currentBody", snap.Character!);
             foreach (var stat in snap.Stats)
-                tx.SetProgress(stat.Key, stat.Value);
+                tx.SetMetric(stat.Key, stat.Value);
             foreach (var map in snap.StatMaps)
-                tx.SetProgress(map.Key, ToObject(map.Value)); // nested object via AtValue(JsonNode)
+                tx.SetSetting(map.Key, ToObject(map.Value)); // nested object via AtValue(JsonNode)
 
             EmitAcquisitions(tx, snap);
             EmitRoute(tx, snap);
@@ -137,7 +132,7 @@ namespace ByJP.Ror2.Play.Mapping
                 if (did != null) participant["atproto"] = did;
                 participants.Add(participant);
             }
-            tx.SetPlayingWith(participants);
+            tx.SetParticipants(participants);
         }
 
         private async Task RollStatsAsync(RunSnapshot snap)
