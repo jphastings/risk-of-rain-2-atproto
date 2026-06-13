@@ -89,7 +89,7 @@ jobs:
           namespace: ${{ vars.THUNDERSTORE_TEAM }}
           community: riskofrain2
           name: Atproto_Play_Tracking
-          description: Publishes your Risk of Rain 2 runs to your atproto PDS as games.gamesgamesgamesgames.actor.play records.
+          description: Publishes your Risk of Rain 2 runs to your atproto PDS as games.gamesgamesgamesgames.experimental.actor.play records.
           version: ${{ steps.ver.outputs.version }}
           repo: thunderstore.io
           path: tspkg
