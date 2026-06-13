@@ -1,7 +1,7 @@
 # ror2.at — working notes
 
 A **Risk of Rain 2 BepInEx plugin** (`mod/`) that publishes each run to the player's
-atproto PDS as a `games.gamesgamesgamesgames.actor.play` record, via the
+atproto PDS as a `games.gamesgamesgamesgames.experimental.actor.play` record, via the
 **`ByJP.AtprotoGaming.Core`** package in the sibling repo `../atproto-gaming-dotnet`.
 Built both as a real mod and as the first consumer used to pressure-test that package
 (all 7 API gaps found are fixed — see `docs/api-gaps.md`).

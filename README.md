@@ -1,7 +1,7 @@
 # Risk of Rain 2 → atproto
 
 A Risk of Rain 2 mod that publishes **every run you play to your own
-[atproto](https://atproto.com) PDS** as a `games.gamesgamesgamesgames.actor.play`
+[atproto](https://atproto.com) PDS** as a `games.gamesgamesgamesgames.experimental.actor.play`
 record — character, run length, items, route, outcome, co-op party, plus rolling
 lifetime stats and achievement counts. There's no central server: the data lands in
 *your* repository and you own it.

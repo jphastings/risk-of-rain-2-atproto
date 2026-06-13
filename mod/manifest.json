@@ -2,7 +2,7 @@
   "name": "Atproto_Play_Tracking",
   "version_number": "__VERSION__",
   "website_url": "https://github.com/jphastings/risk-of-rain-2-atproto",
-  "description": "Publishes your Risk of Rain 2 runs to your atproto PDS as games.gamesgamesgamesgames.actor.play records.",
+  "description": "Publishes your Risk of Rain 2 runs to your atproto PDS as games.gamesgamesgamesgames.experimental.actor.play records.",
   "dependencies": [
     "bbepis-BepInExPack-5.4.2121"
   ]

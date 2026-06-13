@@ -8,7 +8,7 @@ namespace ByJP.Ror2.Play.Mapping
 {
     /// <summary>
     /// Turns <see cref="RunSnapshot"/>s into changes on the player's
-    /// <c>games.gamesgamesgamesgames.actor.play</c> record via the package's
+    /// <c>games.gamesgamesgamesgames.experimental.actor.play</c> record via the package's
     /// <see cref="PlaySession"/>. One mapper per run.
     /// </summary>
     /// <remarks>

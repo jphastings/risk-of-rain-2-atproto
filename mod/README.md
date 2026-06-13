@@ -1,7 +1,7 @@
 # ByJP.Ror2.Play
 
 A Risk of Rain 2 BepInEx plugin that publishes each run to the player's atproto
-PDS as a `games.gamesgamesgamesgames.actor.play` record, using
+PDS as a `games.gamesgamesgamesgames.experimental.actor.play` record, using
 [`ByJP.AtprotoGaming.Core`](../../atproto-gaming-dotnet). It exists both as a real
 mod and as the first consumer used to pressure-test the package's API — see
 [`../docs/api-gaps.md`](../docs/api-gaps.md).
